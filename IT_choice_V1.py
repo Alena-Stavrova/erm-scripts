@@ -3,6 +3,7 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support.ui import Select
 from selenium.webdriver.support import expected_conditions as EC
 import time
 import re
@@ -10,6 +11,12 @@ import random
 import os
 import traceback
 import sys
+
+# Initialize driver with None (to be changed later)
+driver = None
+wait = None
+website_main = "https://it.levenhuk.com/"
+test_phone = "+79444444444"
 
 # A few helper functions
 # Create the optimized driver (loads fast, limits images)
@@ -25,12 +32,12 @@ def create_optimized_driver():
     options.add_argument('--disable-background-networking')
     options.add_argument('--disable-extensions')
     
-    driver = webdriver.Chrome(options=options)
+    local_driver = webdriver.Chrome(options=options)
     
     # Longer timeout for initial load
-    driver.set_page_load_timeout(60)
+    local_driver.set_page_load_timeout(60)
     
-    return driver
+    return local_driver
 
 def take_screenshot(name):
     # Create screenshot folder, name screenshot images
