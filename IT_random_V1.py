@@ -476,7 +476,7 @@ def select_payment_option(delivery_option):
         # Only 2 options available for express delivery
         elif delivery_option == "consegna espressa":
             # Choose randomly opt_id
-            selected_poption_id = "ID_PAY_SYSTEM_ID_" + (str(random.randint(23, 24)))            
+            selected_poption_id = "ID_PAY_SYSTEM_ID_" + (str(random.randint(18, 19)))            
             # Then get the key from it
             for key, val in payment_options.items():
                 if val['opt_id'] == selected_poption_id:
@@ -487,7 +487,6 @@ def select_payment_option(delivery_option):
         else:
             selected_poption_local_name, selected_poption_en_name, selected_poption_id = False, False, False
             print("✗ Unexpected delivery option, can't select payment option")
-            # stopped here
                                                                                                         
         print(f"Selected payment option: {selected_poption_local_name} ({selected_poption_en_name})")
         payment_label = wait.until(EC.element_to_be_clickable(
@@ -763,9 +762,9 @@ def get_order_number():
             # Slicing different number of characters for test ("T-") and regular orders
             # Will need to edit if > 99,999 orders
             if "T-" in current_url:
-                order_num = current_url[-14:]
+                order_num = current_url[-13:]
             else:
-                order_num = current_url[-12:]
+                order_num = current_url[-11:]
             print(f"✓ Order confirmed! Order number: {order_num}")
             return order_num
                 
@@ -892,7 +891,7 @@ if __name__ == "__main__":
                                             order_result = place_order()
 
                                             if order_result:
-                                                print("✓ Order successfully placed!")
+                                                print("✓ Order is successfully placed")
                                                 time.sleep(3)
                                                 step_counter.print_step("Getting the order number")
                                                 test_order_num = get_order_number()
