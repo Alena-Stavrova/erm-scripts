@@ -15,7 +15,7 @@ import sys
 # Initialize driver with None (to be changed later)
 driver = None
 wait = None
-website_main = "https://it.levenhuk.com/"
+website_main = "https://it.ermenrich.com/"
 test_phone = "+79444444444"
 
 # A few helper functions
@@ -75,9 +75,9 @@ def choose_sku():
 
     for price_class in price_classes_to_try:
         if price_class == 0:
-            available_skus = [str(sku) for sku in skus_0 if str(sku) not in items_unavailable]
+            available_skus = [str(sku) for sku in sku_lists[0] if str(sku) not in items_unavailable]
         else:  # price_class == 1
-            available_skus = [str(sku) for sku in skus_1 if str(sku) not in items_unavailable]
+            available_skus = [str(sku) for sku in sku_lists[1] if str(sku) not in items_unavailable]
         
         if available_skus:
             return random.choice(available_skus), price_class
@@ -758,8 +758,8 @@ if __name__ == "__main__":
     while True:
         try:
             print("\nDelivery options:")
-            print("1 = consegna standard(standard delivery)")
-            print("2 = consegna espressa")
+            print("1 = consegna standard (standard)")
+            print("2 = consegna espressa (express)")
             
             selected_delivery = int(input("Enter your option (1-2): "))
             if selected_delivery in [1, 2]:
@@ -801,6 +801,8 @@ if __name__ == "__main__":
     popt_local_name = payment_options[selected_payment]['local_name']
     popt_id = payment_options[selected_payment]['opt_id']
     # print(f"\nSelected: {popt_lname} (Price class: {'70+€' if price_class == 1 else 'under 70€'})")
+
+    print(f"You selected: delivery = {str(dopt_local_name)}, payment = {str(popt_local_name)}")
 
     print("\nLaunching browser...")
     driver = create_optimized_driver()
@@ -951,7 +953,7 @@ if __name__ == "__main__":
 
         # Shipping fees match check
         if verif_success:
-            print(f"Shipping fees: ✓ As expected, '{ship_fee_summary}'")
+            print(f"Shipping fees: ✓ As expected, {ship_fee_summary}")
         else:
             print("✗Shipping fees don't match")
         
