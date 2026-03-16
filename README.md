@@ -17,3 +17,7 @@ For each country, there will be 2 scripts:
 * <ins>random</ins>: choose payment and/or delivery option randomly; used for daily smoke tests where we typically test 1 random flow
 * <ins>choice</ins>: choose payment and/or delivery option that the user selects; can test any flow within possible payment/delivery combinations; used for montly system health check where we typically test all flows or all flows with 3rd-party systems
 
+UPD March 16 '26: I actually have a full collection of ERM scripts but the code is messy and bloated. I'm cleaning them up using LVH scripts as a standard/template. I'm also writing a runner script so that several ERM scripts can be run automatically one after another. Both goals require editing and cleaning the existing scripts, and it's a slow process. Meanwhile, the versions posted here are:
+* V0 = sloppy unedited version
+* V1 = current working version (edited), but doesn't work with the runner yet
+* V2 = edited version that a runner can run
