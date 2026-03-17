@@ -1,18 +1,18 @@
-#import BG_order_V1 as bg
-#import CZ_order_V1 as cz
-#import DE_order_V1 as de
-#import ES_order_V1 as es
+#import BG_order_V0 as bg
+#import CZ_order_V0 as cz
+import DE_order_V0 as de
+#import ES_order_V0 as es
 import EU_order_V0 as eu
-#import HU_order_V1 as hu
-#import IT_order_V1 as it
-#import PL_order_V1 as pl
+#import HU_order_V0 as hu
+#import IT_order_V0 as it
+#import PL_order_V0 as pl
 
 import random
 
 script_modules = {
     #'BG': bg,
     #'CZ': cz,
-    #'DE': de,
+    'DE': de,
     #'ES': es,
     'EU': eu,
     #'HU': hu,

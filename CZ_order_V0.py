@@ -9,22 +9,27 @@ import re
 import random
 import os
 
-# Initialize driver with None (to be changed later)
-driver = None
-wait = None
-website_main = "https://eu.ermenrich.com/"
-#test_phone = "+79444444444"
-
 def create_optimized_driver():
     # Create a Chrome driver optimized for speed
     options = Options()
     options.page_load_strategy = 'eager'
     
-    # Block all images, background networking and extensions
-    prefs = {"profile.managed_default_content_settings.images": 2}
+    # AGGRESSIVE image blocking
+    prefs = {"profile.managed_default_content_settings.images": 1}
     options.add_experimental_option("prefs", prefs)
+
+    # All the performance flags
+    options.add_argument('--blink-settings=imagesEnabled=false')
+    options.add_argument('--disable-gpu')
+    options.add_argument('--disable-features=VizDisplayCompositor')
     options.add_argument('--disable-background-networking')
     options.add_argument('--disable-extensions')
+    options.add_argument('--no-sandbox')
+
+    # ENABLE CACHE
+    options.add_argument('--enable-disk-cache')
+    options.add_argument('--disk-cache-size=104857600')
+    options.add_argument('--disable-clear-browsing-data')
     
     driver = webdriver.Chrome(options=options)
     
@@ -33,10 +38,17 @@ def create_optimized_driver():
     
     return driver
 
+# Initialize driver and wait
+user_email = input("Enter email: ")
+driver = create_optimized_driver()
+driver.maximize_window()
+wait = WebDriverWait(driver, 5)
+website_main = "https://cz.ermenrich.com/"
+test_phone = "+79444444444"
+
 # Choose random sku
 def choose_sku():
-    #first 5 are under 70 EU, last 5 are 70+
-    skus = [83836, 83820, 84547, 84545, 83089, 84558, 84638, 84087, 83842, 85574] 
+    skus = [83088, 83820, 84547, 84545, 83089, 84652, 84648, 86291, 83839, 84550] #first 5 are under 3000 CZK, last 5 are over
     sku_num = random.randint(0,9)
     sku = skus[sku_num]
     return(sku)
@@ -45,22 +57,25 @@ def choose_address():
     # Define a list of shipping addresses
     shipping_addresses = [
     {
-        'country': 'Finland',
-        'city': 'Oulu',
-        'address': 'Aleksanterinkatu 46',
-        'postal_code': '90120'
+        'country': 'Česká republika',
+        'city': 'Praha',
+        'address': 'V Nových domcích 661/10',
+        #'phone': '+420777775127',
+        'postal_code': '102 00'
     },
     {
-        'country': 'Greece',
-        'city': 'Thessaloniki', 
-        'address': 'Kassandrou 37',
-        'postal_code': '54633'
+        'country': 'Česká republika',
+        'city': 'Brno', 
+        'address': 'Zborovská 937/1',
+        #'phone': '+420542213531',
+        'postal_code': '616 00'
     },
     {
-        'country': 'Slovenia',
-        'city': 'Maribor',
-        'address': 'Komenskega ulica 2',
-        'postal_code': '2000'
+        'country': 'Česká republika',
+        'city': 'Pardubice',
+        'address': 'Ve Stezkách 215',
+        #'phone': '+420212812811',
+        'postal_code': '530 03'
     }
 ]
     address = shipping_addresses[random.randint(0,2)] 
@@ -88,7 +103,7 @@ def extract_price(price_text):
         return None
 
 def get_total_price():
-    # Extract the total price in the Basket
+    # Extract the total price - Cart page
     try:
         price_text = driver.find_element(By.CLASS_NAME, 'cart-panel__result-price').text
         price = extract_price(price_text)
@@ -105,25 +120,50 @@ def get_total_price():
 def close_cookie_popup():
     # Close the cookie consent popup if present
     try:
-        accept_button = WebDriverWait(driver, 5).until(
-                    EC.element_to_be_clickable((By.CSS_SELECTOR, ".cky-btn.cky-btn-accept"))
-        )
-        accept_button.click()
-        print("Cookie popup closed")
+        # Wait a bit for popup to appear
         time.sleep(1)
-        return True    
-     
+        
+        # Try multiple selectors for cookie popup buttons
+        accept_selectors = [
+            ".cky-btn.cky-btn-accept",
+            ".cookie-popup .accept",
+            "[aria-label*='cookie'] button",
+            "button:contains('Akceptuj')",
+            "button:contains('Accept')"
+        ]
+        
+        for selector in accept_selectors:
+            try:
+                accept_buttons = driver.find_elements(By.CSS_SELECTOR, selector)
+                if accept_buttons:
+                    # Try JavaScript click first (more reliable)
+                    driver.execute_script("arguments[0].click();", accept_buttons[0])
+                    print("Cookie popup closed (via JavaScript)")
+                    time.sleep(0.5)
+                    return True
+            except:
+                continue
+        
+        print("No cookie popup found or already closed")
+        return True
+    
     except Exception as e:
         print(f"Error handling cookie popup: {str(e)}")
         return False
-
+    
 def search_for_sku(sku):
-    # Search for a specific SKU 
+    # Search for a specific SKU on the website
     try:
         print("Navigating to main page...")
+        start_time = time.time()
         driver.get(website_main)
-        time.sleep(3)
-        
+        load_time = time.time() - start_time
+        print(f"Page loaded in {load_time:.1f}s")
+
+        # If it took more than 10 seconds, warn
+        if load_time > 10:
+            print("⚠️  WARNING: Slow network detected")       
+
         close_cookie_popup()
         
         print("Opening search box...")
@@ -132,21 +172,21 @@ def search_for_sku(sku):
         time.sleep(1)
         
         print("Entering SKU...")
-        search_input = wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, 'input[placeholder*="earch"]')))
+        search_input = wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, 'input[placeholder*="yhledat"]')))
         search_input.clear()
         search_input.send_keys(str(sku))
-                
+
         print("Submitting search...")
         search_input.send_keys(Keys.ENTER)
         
         print("Waiting for results to load...")
         try:
-            WebDriverWait(driver, 15).until(
+            WebDriverWait(driver, 5).until(
                 EC.presence_of_element_located((By.CSS_SELECTOR, ".product-card"))
             )
         except:
-            time.sleep(5)
-        
+            time.sleep(2)
+
         print("Search completed successfully")
         return True
         
@@ -163,7 +203,8 @@ def get_offer_id_for_sku(sku):
         # Find the product card that contains our SKU
         sku_element = wait.until(EC.visibility_of_element_located(
             (By.XPATH, f"//*[contains(text(), 'ID {sku}')]"))
-            )
+        )
+        
         print(f"Found SKU element: {sku_element.text}")
         
         # Find the product card container
@@ -187,7 +228,7 @@ def add_to_cart_via_api(offer_id, quantity=1):
         
         # Execute JavaScript to make the API call
         script = f"""
-            // Make the API call to add to cart
+            // Simple API call without UI updates
             fetch('/rest/methods/user/basket/change', {{
                 method: 'POST',
                 headers: {{
@@ -195,32 +236,12 @@ def add_to_cart_via_api(offer_id, quantity=1):
                     'X-Requested-With': 'XMLHttpRequest'
                 }},
                 body: JSON.stringify({{offerId: {offer_id}, quantity: {quantity}}})
-            }})
-            .then(response => response.json())
-            .then(data => {{
-                console.log('API response:', data);
-                // Update the UI to reflect the cart change
-                if (data.result && data.result.basket) {{
-                    // Update add to cart button to show counter
-                    const addButtons = document.querySelectorAll('.product-card__basket');
-                    addButtons.forEach(button => {{
-                        if (button.closest('[data-offer-id="{offer_id}"]') || 
-                            button.closest('[data-product-id="{offer_id}"]')) {{
-                            button.innerHTML = '<div class="counter"><button type="button" class="counter-btn counter-minus">-</button><input type="number" value="{quantity}" min="1" max="999"><button type="button" class="counter-btn counter-plus">+</button></div>';
-                        }}
-                    }});
-                }}
-            }})
-            .catch(error => {{
-                console.error('API error:', error);
-            }});
+            }}).catch(error => console.log('API error:', error));
         """
         
         # Execute the JavaScript
         driver.execute_script(script)
-        
-        # Wait for the UI to update
-        time.sleep(3)
+        time.sleep(0.5)
         print("API call completed successfully")
         return True
         
@@ -232,11 +253,11 @@ def add_to_cart_via_api(offer_id, quantity=1):
 def navigate_to_cart_directly():
     # Navigate to the cart page directly by URL
     try:
-        cart_url = "https://eu.ermenrich.com/basket/"
+        cart_url = "https://cz.ermenrich.com/basket/"
         print(f"Navigating to cart URL: {cart_url}")
         
         driver.get(cart_url)
-        time.sleep(3)
+        time.sleep(1)
         
         # Check if we're on a cart page
         current_url = driver.current_url.lower()
@@ -244,7 +265,7 @@ def navigate_to_cart_directly():
             print("Successfully navigated to cart page")
             return True
         else:
-            print(f"Not on cart page. Current URL: {driver.current_url}")
+            print(f"Not on basket page. Current URL: {driver.current_url}")
             return False
         
     except Exception as e:
@@ -253,7 +274,7 @@ def navigate_to_cart_directly():
         return False
 
 def check_cart_contents(sku):
-    # Check if the cart has our item
+    # Check if the cart has our specific item
     print("Checking cart contents...")
     try:
         sku_element = driver.find_element(By.XPATH, f"//*[contains(text(), 'ID: {sku}')]")
@@ -265,71 +286,165 @@ def check_cart_contents(sku):
         take_screenshot("cart_check_error")
         return False
 
+def select_ppl_delivery():
+    # Select PPL parcel box delivery with pickup point
+    try:
+        print("Selecting PPL delivery method...")
+        
+        # Step 1: Select PPL delivery method
+        ppl_selector = "label[for='ID_SHIPPING_METHOD_ID_99']"
+        
+        ppl_element = WebDriverWait(driver, 5).until(
+            EC.element_to_be_clickable((By.CSS_SELECTOR, ppl_selector))
+        )
+        ppl_element.click()
+        print("✓ PPL delivery selected")
+        time.sleep(1)  # Wait for PPL points to load
+        
+        # Step 2: Select a PPL pickup point
+        print("Selecting PPL pickup point...")
+        
+        # Wait for pickup points to appear
+        WebDriverWait(driver, 5).until(
+            EC.presence_of_element_located((By.CSS_SELECTOR, ".result__item-title"))
+        )
+        
+        # Get all pickup points
+        pickup_points = driver.find_elements(By.CSS_SELECTOR, ".result__item-title")
+        print(f"Found {len(pickup_points)} PPL pickup points")
+        
+        if not pickup_points:
+            print("✗ No PPL pickup points found")
+            return False
+        
+        # Choose a random pickup point
+        chosen_point = random.choice(pickup_points)
+        point_name = chosen_point.text
+        print(f"Selecting pickup point: {point_name}")
+        
+        # Click the pickup point
+        chosen_point.click()
+        print("✓ Pickup point clicked, waiting for details to load...")
+        time.sleep(1)
+        
+        # Step 3: Click the "Vybrat toto místo" button
+        print("Looking for selection button...")
+        
+        select_button = WebDriverWait(driver, 5).until(
+            EC.element_to_be_clickable((By.XPATH, "//button[contains(text(), 'Vybrat toto místo')]"))
+        )
+        
+        print(f"Button text: '{select_button.text}'")
+        select_button.click()
+        print("✓ Selection button clicked")
+        
+        # Wait for confirmation
+        time.sleep(2)
+        
+        # Verify selection was successful
+        try:
+            # Look for confirmation that the pickup point was selected
+            success_elements = driver.find_elements(By.XPATH, "//*[contains(text(), 'Vybráno')]")
+            if success_elements:
+                print("✓ Pickup point selection confirmed")
+        except:
+            print("✗ Could not verify selection visually, but proceeding")
+        
+        print("✓ PPL pickup point selected successfully")
+        return True
+        
+    except Exception as e:
+        print(f"Error selecting PPL delivery: {e}")
+        return False
+
 def select_payment_option():
-    # Randomly select a payment option for orders over 70€ using element IDs
+    # Select random payment method
     try:
         print("Selecting payment option...")
         
-        # Define payment options with their corresponding IDs (equal probability)
         payment_options = {
-            "Bank transfer": "ID_PAY_SYSTEM_ID_2",
-            "Credit/Debit card": "ID_PAY_SYSTEM_ID_43", 
-            "PayPal": "ID_PAY_SYSTEM_ID_5"
+            "Dobírka": "ID_PAY_SYSTEM_ID_10",
+            "Online platba kartou": "ID_PAY_SYSTEM_ID_44", 
+            "PayPal": "ID_PAY_SYSTEM_ID_6"
         }
-
-        # Randomly select any payment option
+        
         selected_option_name = random.choice(list(payment_options.keys()))
         selected_option_id = payment_options[selected_option_name]
+        selected_option_selector = f"label[for='{selected_option_id}']"
         
         print(f"Selected payment option: {selected_option_name} (ID: {selected_option_id})")
-
-        # Only interact with the UI if it's not the default option
-        if selected_option_name != "Bank transfer":
-            # Find and click the payment option using its ID
-            try:
-                # Find and click the label of the payment option
-                payment_label = wait.until(EC.element_to_be_clickable(
-                    (By.CSS_SELECTOR, f"label[for='{selected_option_id}']"))
-                )
-                print("Found payment label, attempting to click...")
-
-                # Scroll to the label
-                driver.execute_script("arguments[0].scrollIntoView({block: 'center', behavior: 'smooth'});", payment_label)
-                time.sleep(0.5)
-
-                # Click the label
-                payment_label.click()
-                time.sleep(1)
-
-                # Verify the option was selected by checking the input
-                payment_input = driver.find_element(By.ID, selected_option_id)
-                if payment_input.is_selected():
-                    clean_option_name = selected_option_name.lower().replace(' ', '_').replace('\\', '_')
-                    take_screenshot(f"selected_{clean_option_name}")
-                    print(f"Successfully selected {selected_option_name} payment option")
-                    return True, selected_option_name
-
-                else:
-                    print("Label click didn't change selection state")
-                    # Fallback to JavaScript click if needed
-                    driver.execute_script("arguments[0].click();", payment_input)
-                    time.sleep(1)
-                    if payment_input.is_selected():
-                        print("Successfully selected using JavaScript fallback")
-                        return True, selected_option_name
-                    return False, selected_option_name
-
-            except Exception as e:
-                    print(f"Failed to select payment option {selected_option_name}: {str(e)}")
-                    return False, selected_option_name
-        else:
-                print("Using default payment option (Bank transfer), no action needed")
-                return True, selected_option_name
-
+          
+        payment_element = WebDriverWait(driver, 5).until(
+            EC.element_to_be_clickable((By.CSS_SELECTOR, selected_option_selector))
+        )
+        payment_element.click()
+        time.sleep(1)
+        print("✓ Payment selected successfully")
+        return True, selected_option_name
+        
     except Exception as e:
-            print(f"Error in payment selection process: {str(e)}")
-            take_screenshot("payment_option_error")
-            return False, "Error"
+        print(f"Error selecting payment: {e}")
+        return False, "Failed"
+
+def handle_czech_delivery():
+    # Handle Czech delivery selection (returns success, option_name)
+    try:
+        print("Selecting CZ delivery option...")
+        
+        delivery_methods = {
+            "courier": "label[for='ID_SHIPPING_METHOD_ID_3']",
+            "shop_pickup": "label[for='ID_SHIPPING_METHOD_ID_4']", 
+            "ppl_parcel_box": "label[for='ID_SHIPPING_METHOD_ID_99']"
+        }
+
+        # Choose delivery method
+        chosen_delivery = random.choice(list(delivery_methods.keys()))
+        print(f"Selected delivery method: {chosen_delivery}")
+
+        # Map to human-readable names
+        delivery_names = {
+            "courier": "Doručení kurýrem",
+            "shop_pickup": "Vyzvednutí",
+            "ppl_parcel_box": "PPL Parcel Box"
+        }
+        delivery_option_name = delivery_names[chosen_delivery]        
+        
+        # Select the delivery option
+        delivery_selector = delivery_methods[chosen_delivery]
+        delivery_element = WebDriverWait(driver, 10).until(
+            EC.element_to_be_clickable((By.CSS_SELECTOR, delivery_selector))
+        )
+        delivery_element.click()
+        print(f"✓ Selected: {delivery_option_name}")
+        time.sleep(2)
+        
+        if chosen_delivery == "ppl_parcel_box":
+            delivery_success = select_ppl_delivery()
+        elif chosen_delivery == "shop_pickup":
+            # Click shop pickup button
+            try:
+                shop_button = WebDriverWait(driver, 5).until(
+                    EC.element_to_be_clickable((By.CSS_SELECTOR, "button[data-set-shop][data-reseller-id='4']"))
+                )
+                shop_button.click()
+                time.sleep(1)
+                print("✓ Shop pickup selected")
+                delivery_success = True
+            except Exception as e:
+                print(f"⚠ Could not select shop pickup: {e}")
+                delivery_success = False
+        else:
+            delivery_success = True  # Courier needs no additional steps
+        
+        if delivery_success:
+            return True, delivery_option_name
+        else:
+            return False, delivery_option_name
+            
+    except Exception as e:
+        print(f"Error selecting CZ delivery: {e}")
+        return False, "Error"
+
 
 # Create a simple step counter class
 class StepCounter:
@@ -340,23 +455,29 @@ class StepCounter:
         print(f"\n--- Step {self.step}: {message} ---")
         self.step += 1
 
-def fill_order_form(user_email, test_phone):
+
+def fill_order_form():
     try:
         ship_to = choose_address() #is a dictionary
-        print(f"Chosen address in: {str(ship_to['country'])}")
-        
+        print(f"Chosen address in: {str(ship_to['city'])}")
+
         # Wait for the form to be present
-        WebDriverWait(driver, 15).until(EC.presence_of_element_located(
-            (By.ID, "bx-input-order-EMAIL"))
+        WebDriverWait(driver, 5).until(
+            EC.presence_of_element_located((By.ID, "bx-input-order-EMAIL"))
         )
+        
         print("Form found, starting to fill fields...")
+        take_screenshot("form_loaded")
+
+        # CRITICAL: Close cookie popup on order page
+        close_cookie_popup()
         
         # Contact information
         print("Filling contact information...")
         
         # Email field
         try:
-            email_field = WebDriverWait(driver, 10).until(
+            email_field = WebDriverWait(driver, 5).until(
                 EC.visibility_of_element_located((By.ID, "bx-input-order-EMAIL"))
             )
             email_field.clear()
@@ -389,7 +510,6 @@ def fill_order_form(user_email, test_phone):
             name_field.clear()
             name_field.send_keys("Alena Auto Test")
             print("✓ Name field filled")
-
         except Exception as e:
             print(f"✗ Error with name field: {str(e)}")
             take_screenshot("name_field_error")
@@ -408,7 +528,7 @@ def fill_order_form(user_email, test_phone):
         # Shipping address
         print("Filling shipping address...")
         
-        # Country field (a dropdown with typeahead)
+        # Country field (this might be a dropdown with typeahead)
         try:
             country_field = WebDriverWait(driver, 5).until(
                 EC.element_to_be_clickable((By.ID, "bx-input-order-COUNTRY_SHIPPING-ts-control"))
@@ -436,7 +556,7 @@ def fill_order_form(user_email, test_phone):
         # City field 
         try:
             # Wait for the city field to be interactable
-            city_field = WebDriverWait(driver, 10).until(
+            city_field = WebDriverWait(driver, 5).until(
                 EC.element_to_be_clickable((By.ID, "bx-input-order-CITY_SHIP"))
             )
             
@@ -507,22 +627,6 @@ def fill_order_form(user_email, test_phone):
         # Billing address is the same as shipping (default tick remains)
         print("Billing address remains same as shipping (default)")
         
-        # Check delivery options
-        print("Checking delivery options...")
-        try:
-            # Look for the specific courier delivery option
-            courier_option = driver.find_elements(By.CSS_SELECTOR, "label[for='ID_SHIPPING_METHOD_ID_2']")
-
-            if len(courier_option) == 1:
-                print("Found 1 delivery option as expected (Courier delivery)")
-            elif len(courier_option) > 1:
-                print(f"WARNING: Found {len(courier_option)} delivery options, expected only 1 (Courier delivery)")
-            else:
-                print("Could not find the Courier delivery option")
-
-        except Exception as e:
-            print(f"Could not check delivery options: {str(e)}")
-        
         take_screenshot("order_form_filled")
         print("Order form filled successfully")
         return True
@@ -562,7 +666,7 @@ def place_order():
         take_screenshot("before_final_order")
         
         # Find and click the checkout button
-        checkout_button = WebDriverWait(driver, 10).until(
+        checkout_button = WebDriverWait(driver, 5).until(
             EC.element_to_be_clickable((By.ID, "submit"))
         )
         print(f"✓ Found checkout button: '{checkout_button.text}'")
@@ -582,7 +686,7 @@ def place_order():
         # Try multiple ways to find error messages
         error_selectors = [
             # By specific error text (most reliable)
-            (By.XPATH, "//*[contains(text(), 'already exists')]"),
+            (By.XPATH, "//*[contains(text(), 'již existuje')]"),
             
             # By CSS classes that might indicate errors
             (By.CSS_SELECTOR, ".alert-content")
@@ -611,7 +715,7 @@ def place_order():
         print("No errors detected, checking for order confirmation...")
         
         # Wait a bit for potential redirect
-        time.sleep(3)
+        time.sleep(1)
         
         # Check 1: Success URL with ORDER_ID
         current_url = driver.current_url
@@ -669,7 +773,7 @@ def proceed_to_checkout():
     # Click the checkout button and verify redirection Basket > Order page
     try:
         print("Looking for checkout button...")
-        checkout_button = driver.find_element(By.XPATH, f"//*[contains(text(), 'To check out')]")
+        checkout_button = driver.find_element(By.XPATH, f"//*[contains(text(), 'Pokračovat')]")
         if checkout_button and checkout_button.is_displayed():
             print(f"Found checkout button")
                                 
@@ -688,7 +792,7 @@ def proceed_to_checkout():
         
         # Wait for the order page to load
         print("Waiting for order page to load...")
-        WebDriverWait(driver, 15).until(
+        WebDriverWait(driver, 5).until(
             EC.url_contains("order")
         )
         
@@ -708,7 +812,6 @@ def proceed_to_checkout():
         take_screenshot("checkout_error")
         return False
 
-
 def verify_free_shipping():
     # Verify that free shipping is applied for orders over 70€
     try:
@@ -717,19 +820,35 @@ def verify_free_shipping():
         # Wait a moment for the page to update after address entry
         time.sleep(2)
         
-        # Look for the free shipping element
-        free_shipping_element = wait.until(
-            EC.presence_of_element_located((By.ID, "bx-cost-shipping"))
-        )
+        # Try multiple ways to find the shipping element
+        try:
+            # First try by ID
+            free_shipping_element = driver.find_element(By.ID, "bx-cost-shipping")
+        except:
+            # Try by class or other selector
+            try:
+                free_shipping_element = driver.find_element(By.CSS_SELECTOR, ".cart-panel__price[data-price-type='shipping']")
+            except:
+                print("Could not find shipping element")
+                return False
         
-        # Check if the element contains "Free shipping" text
-        if "Free shipping" in free_shipping_element.text:
+        shipping_text = free_shipping_element.text.strip()
+        print(f"Shipping text found: '{shipping_text}'")
+        
+        # Check if the element contains "Doprava zdarma" or "0 Kč" or "0,00 Kč"
+        if "zdarma" in shipping_text.lower() or "0 kč" in shipping_text.lower():
             print("✓ Free shipping verified successfully!")
             return True
         else:
-            print(f"✗ Free shipping not applied. Shipping cost: {free_shipping_element.text}")
-            take_screenshot("shipping_cost_error")
-            return False
+            # Check if price is 0
+            price = extract_price(shipping_text)
+            if price == 0:
+                print("✓ Free shipping verified (price is 0)!")
+                return True
+            else:
+                print(f"✗ Shipping cost: {shipping_text}")
+                take_screenshot("shipping_cost_error")
+                return False
             
     except Exception as e:
         print(f"Error verifying free shipping: {str(e)}")
@@ -737,116 +856,132 @@ def verify_free_shipping():
         return False
 
 # Main execution
-def main_eu(email, phone):
-    global driver, wait
-    
+if __name__ == "__main__":
     try:
+        
+        start_total = time.time()
+        
         # Initialize step counter
         step_counter = StepCounter()
+        print("Running CZ script")
         print("---------------LOGS FOR NERDS---------------")
-        user_email = email
-        test_phone = phone
-
-        print("\nLaunching browser...")
-        driver = create_optimized_driver()
-        driver.maximize_window()
-        wait = WebDriverWait(driver, 20)
         
-        # Initialize all variables
-        delivery_option = 'Courier delivery'
+        # Initialize variables for summary
         sku = choose_sku()
-        payment_option_for_summary = "Default"
+        delivery_option = "Default"
+        payment_option = "Default"
+        free_shipping_result = "Not checked"
         order_result = None
         order_price = None
         basket_price = None
-        free_shipping_result = None  # NEW: Store free shipping verification result
-
+        
         print(f"Chosen SKU: {str(sku)}")
-                
+        
         step_counter.print_step("Searching for SKU")
+        step_start = time.time()
         
         if search_for_sku(sku):
+            print(f"✓ Search took: {time.time() - step_start:.1f}s")
             step_counter.print_step("Getting offer ID")
+            step_start = time.time()
             offer_id = get_offer_id_for_sku(sku)
+            print(f"✓ Get offer ID took: {time.time() - step_start:.1f}s")
             
             if offer_id:
                 step_counter.print_step("Adding to cart via API")
+                step_start = time.time()
                 
                 if add_to_cart_via_api(offer_id, 1):
-                    step_counter.print_step("Refreshing page to synchronize UI")
-                    driver.refresh()
-                    time.sleep(3)
+                    print(f"✓ Add to cart took: {time.time() - step_start:.1f}s")    
+
                     step_counter.print_step("Navigating to cart")
+                    step_start = time.time()
                     
                     if navigate_to_cart_directly():
+                        print(f"✓ Navigate to cart took: {time.time() - step_start:.1f}s")
                         step_counter.print_step("Checking cart contents")
+                        step_start = time.time()
+                        
                         if check_cart_contents(sku):
-                            step_counter.print_step("Getting cart total price")
+                            print(f"✓ Checking cart contents took: {time.time() - step_start:.1f}s")
+                            step_counter.print_step("Getting basket total price")
+                            step_start = time.time()
                             basket_price = get_total_price()
                             
                             if basket_price is not None:
-                                print(f"Cart total price: {basket_price}")
+                                print(f"Basket total price: {basket_price}")
+                                take_screenshot("basket_with_price")
+                                print(f"✓ Getting basket total price took: {time.time() - step_start:.1f}s")
                                 
                                 step_counter.print_step("Proceeding to checkout")
+                                step_start = time.time()
+                                
                                 if proceed_to_checkout():
+                                    print(f"✓ Proceeding to checkout took: {time.time() - step_start:.1f}s")
                                     step_counter.print_step("Getting order page total price")
+                                    step_start = time.time()
                                     order_price = get_total_price()
                                     
                                     if order_price is not None:
+                                        print(f"✓ Getting order page total price took: {time.time() - step_start:.1f}s")
                                         print(f"Order page total price: {order_price}")
                                         take_screenshot("order_with_price")
                                         
                                         # Compare prices
                                         if abs(basket_price - order_price) < 0.01:  # Account for floating point precision
-                                            print("✓ SUCCESS: Prices match between cart and order pages!")
+                                            print("✓ SUCCESS: Prices match between basket and order pages!")
                                             print(f"✓ Total price: {order_price}")
 
-                                            if fill_order_form(user_email, test_phone):
-                                                # Check if order value is over 70€ and select payment option if needed
+                                            step_counter.print_step("Filling order form")
+                                            step_start = time.time()
+                                            form_success = fill_order_form()
 
-                                                if order_price >= 70:
-                                                    step_counter.print_step("Verifying free shipping")
+                                            if form_success:
+                                                # Store item price before fees
+                                                item_price_czk = order_price
 
-                                                    # Store the result instead of just calling it
-                                                    free_shipping_result = verify_free_shipping()
-                                                    if not free_shipping_result:
-                                                        print("✗ Free shipping verification failed, but continuing with order")       
+                                                # Select delivery option (similar to PL/IT)
+                                                step_counter.print_step("Selecting delivery option")
+                                                delivery_success, delivery_option = handle_czech_delivery()  # This returns (success, option_name)
+                                                if not delivery_success:
+                                                    print("✗ Delivery selection failed, but continuing with order process")
+    
+                                                # Select payment option  
+                                                step_counter.print_step("Selecting payment option")
+                                                payment_success, payment_option = select_payment_option()
+                                                if not payment_success:
+                                                    print("✗ Payment selection failed, but continuing with order process")
 
-                    
-                                                    step_counter.print_step("Selecting payment option")
-                                                    payment_success, chosen_payment_option = select_payment_option()
-                                                    if not payment_success:
-                                                        print("✗ Payment selection failed, but continuing with order process")
-                                                    payment_option_for_summary = chosen_payment_option # <-- UPDATE
-
+                                                # Verify free shipping if applicable
+                                                if order_price >= 3000:
+                                                    print("✓ Order value is 3000+ CZK - checking free delivery")
+                                                    free_shipping_result = "✓ Yes" if verify_free_shipping() else "✗ No"
                                                 else:
-                                                    print("Order value below 70€, using default payment option")
-                                                    payment_option_for_summary = "TBD (default for <70€)"  # <-- SET
+                                                    print("Order value is below 3000 CZK - delivery may have additional cost")
+                                                    free_shipping_result = "Not applicable (<3000 CZK)"
 
                                                 step_counter.print_step("Placing order")
                                                 order_result = place_order()
 
                                                 if order_result:
+                                                    print(f"✓ Placing order took: {time.time() - step_start:.1f}s")
                                                     if isinstance(order_result, str):
                                                         print(f"✓ Order successfully placed! Order number: {order_result}")
                                                     else:
-                                                        print("✓ Order successfully placed!")                                                                      
-
+                                                        print("✓ Order successfully placed!")
+                                                    print("Please check your email and 1C system for order confirmation")
                                                 else:
-                                                    print("✗ Failed to place order")                                                
-
+                                                    print("✗ Failed to place order")
                                             else:
-                                                print("✗ Failed to fill order form") 
-                                            
+                                                print("✗ Failed to fill Czech order form")
                                         else:
-                                            print(f"✗ WARNING: Prices don't match! Cart: {basket_price}, Order: {order_price}")
-                                                                                       
+                                            print(f"✗ WARNING: Prices don't match! Basket: {basket_price}, Order: {order_price}")
                                     else:
                                         print("✗ Could not extract price from order page")
                                 else:
                                     print("\n✗ Failed to proceed to checkout")
                             else:
-                                print("\n✗ Could not extract price from cart page")
+                                print("\n✗ Could not extract price from basket page")
                         else:
                             print("\n✗ Item was added but not found in cart")
                     else:
@@ -859,48 +994,31 @@ def main_eu(email, phone):
             print("\n✗ Failed to search for SKU")
         
         print("\nProcess completed. Browser will close in 10 seconds.")
-        
         print("----------ORDER INFO----------")
         if order_result:
             print(f"Order number: {order_result}")
         else:
-            print("Order number: order wasn't placed")
-        print(f"Chosen SKU: {str(sku)}")
-        print(f"Item price: {order_price if order_price else 'N/A'} €")
+            print("Order number: Order wasn't placed")
+        print(f"Chosen SKU: {sku}")
+        print(f"Item price: {order_price if order_price else 'N/A'} CZK")
         print(f"Delivery option: {delivery_option}")
-        print(f"Payment option: {payment_option_for_summary}")
-        
-        # Price match check
+        print(f"Payment option: {payment_option}")
         if basket_price and order_price:
             if abs(basket_price - order_price) < 0.01:
                 print("Cart and order prices match: ✓ Yes")
             else:
-                print(f"Cart and order prices match: ✗ No (Cart: {basket_price}, Order: {order_price})")
+                print(f"Cart and order prices match: ✗ No (Basket: {basket_price}, Order: {order_price})")
         else:
             print("Cart and order prices match: N/A (missing price data)")
-        
-        # Free shipping check - USE STORED RESULT, DON'T CALL FUNCTION AGAIN
-        if order_price and order_price >= 70:
-            if free_shipping_result is True:
-                print("Free delivery: ✓ Yes")
-            elif free_shipping_result is False:
-                print("Free delivery: ✗ No")
-            else:
-                print("Free delivery: Not checked")
-        else:
-            print("Free delivery: Not applicable (order <70€)")
-        
+        print(f"Free delivery: {free_shipping_result}")
         print("----------END----------")
-        time.sleep(10)
+        time.sleep(3)
         
     except Exception as e:
-        print(f"\n✗ Script failed with error: {str(e)}")
-        take_screenshot("main_script_error")
-
+        print(f"\n❌ Script failed with error: {str(e)}")
+        take_screenshot("main_script_error")        
+   
     finally:
         driver.quit()
-   
-if __name__ == "__main__":
-    main_eu()
 
 
