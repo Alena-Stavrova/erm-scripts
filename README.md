@@ -20,4 +20,4 @@ For each country, there will be 2 scripts:
 UPD March 16 '26: I actually have a full collection of ERM scripts but the code is messy and bloated. I'm cleaning them up using LVH scripts as a standard/template. I'm also writing a runner script so that several ERM scripts can be run automatically one after another. Both goals require editing and cleaning the existing scripts, and it's a slow process. Meanwhile, the versions posted here are:
 * V0 = sloppy unedited version
 * V1 = current working version (edited), but doesn't work with the runner yet
-* V2 = edited version that a runner can run
+* V2 = edited version that is also compatible with the runner
