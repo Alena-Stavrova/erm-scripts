@@ -781,7 +781,7 @@ if __name__ == "__main__":
     try:
         # Initialize step counter
         step_counter = StepCounter()
-        print("IT ERMENRICH")
+        print("----------IT ERMENRICH----------")
         print("----------LOGS FOR NERDS----------")
         
         # Initialize expected delivery and payment options
