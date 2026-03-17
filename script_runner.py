@@ -3,7 +3,7 @@ import CZ_order_V0 as cz
 import DE_order_V0 as de
 import ES_order_V0 as es
 import EU_order_V0 as eu
-#import HU_order_V0 as hu
+import HU_order_V0 as hu
 #import IT_order_V0 as it
 #import PL_order_V0 as pl
 
@@ -15,7 +15,7 @@ script_modules = {
     'DE': de,
     'ES': es,
     'EU': eu,
-    #'HU': hu,
+    'HU': hu,
     #'IT': it,
     #'PL': pl,
     }
