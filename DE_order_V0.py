@@ -13,7 +13,6 @@ import os
 driver = None
 wait = None
 website_main = "https://de.ermenrich.com/"
-#test_phone = "+79444444444"
 
 def create_optimized_driver():
     # Create a Chrome driver optimized for speed
@@ -39,7 +38,7 @@ def choose_sku():
     skus = [83836, 83820, 84547, 84545, 83089, 84558, 84638, 84087, 82544, 85574]
     sku_num = random.randint(0,9)
     sku = skus[sku_num]
-    return(sku)
+    return sku
 
 def choose_address():
     shipping_addresses = [

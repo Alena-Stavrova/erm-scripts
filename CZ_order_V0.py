@@ -9,27 +9,21 @@ import re
 import random
 import os
 
+# Initialize driver with None (to be changed later)
+driver = None
+wait = None
+website_main = "https://cz.ermenrich.com/"
+
 def create_optimized_driver():
     # Create a Chrome driver optimized for speed
     options = Options()
     options.page_load_strategy = 'eager'
     
-    # AGGRESSIVE image blocking
-    prefs = {"profile.managed_default_content_settings.images": 1}
+    # Block all images, background networking and extensions
+    prefs = {"profile.managed_default_content_settings.images": 2}
     options.add_experimental_option("prefs", prefs)
-
-    # All the performance flags
-    options.add_argument('--blink-settings=imagesEnabled=false')
-    options.add_argument('--disable-gpu')
-    options.add_argument('--disable-features=VizDisplayCompositor')
     options.add_argument('--disable-background-networking')
     options.add_argument('--disable-extensions')
-    options.add_argument('--no-sandbox')
-
-    # ENABLE CACHE
-    options.add_argument('--enable-disk-cache')
-    options.add_argument('--disk-cache-size=104857600')
-    options.add_argument('--disable-clear-browsing-data')
     
     driver = webdriver.Chrome(options=options)
     
@@ -37,14 +31,6 @@ def create_optimized_driver():
     driver.set_page_load_timeout(60)
     
     return driver
-
-# Initialize driver and wait
-user_email = input("Enter email: ")
-driver = create_optimized_driver()
-driver.maximize_window()
-wait = WebDriverWait(driver, 5)
-website_main = "https://cz.ermenrich.com/"
-test_phone = "+79444444444"
 
 # Choose random sku
 def choose_sku():
@@ -60,21 +46,18 @@ def choose_address():
         'country': 'Česká republika',
         'city': 'Praha',
         'address': 'V Nových domcích 661/10',
-        #'phone': '+420777775127',
         'postal_code': '102 00'
     },
     {
         'country': 'Česká republika',
         'city': 'Brno', 
         'address': 'Zborovská 937/1',
-        #'phone': '+420542213531',
         'postal_code': '616 00'
     },
     {
         'country': 'Česká republika',
         'city': 'Pardubice',
         'address': 'Ve Stezkách 215',
-        #'phone': '+420212812811',
         'postal_code': '530 03'
     }
 ]
@@ -120,57 +103,32 @@ def get_total_price():
 def close_cookie_popup():
     # Close the cookie consent popup if present
     try:
-        # Wait a bit for popup to appear
+        accept_button = WebDriverWait(driver, 5).until(
+                    EC.element_to_be_clickable((By.CSS_SELECTOR, ".cky-btn.cky-btn-accept"))
+                )
+        accept_button.click()
+        print("Cookie popup closed")
         time.sleep(1)
-        
-        # Try multiple selectors for cookie popup buttons
-        accept_selectors = [
-            ".cky-btn.cky-btn-accept",
-            ".cookie-popup .accept",
-            "[aria-label*='cookie'] button",
-            "button:contains('Akceptuj')",
-            "button:contains('Accept')"
-        ]
-        
-        for selector in accept_selectors:
-            try:
-                accept_buttons = driver.find_elements(By.CSS_SELECTOR, selector)
-                if accept_buttons:
-                    # Try JavaScript click first (more reliable)
-                    driver.execute_script("arguments[0].click();", accept_buttons[0])
-                    print("Cookie popup closed (via JavaScript)")
-                    time.sleep(0.5)
-                    return True
-            except:
-                continue
-        
-        print("No cookie popup found or already closed")
-        return True
-    
+        return True    
+     
     except Exception as e:
         print(f"Error handling cookie popup: {str(e)}")
         return False
     
 def search_for_sku(sku):
-    # Search for a specific SKU on the website
+    # Search for a specific SKU
     try:
         print("Navigating to main page...")
-        start_time = time.time()
         driver.get(website_main)
-        load_time = time.time() - start_time
-        print(f"Page loaded in {load_time:.1f}s")
-
-        # If it took more than 10 seconds, warn
-        if load_time > 10:
-            print("⚠️  WARNING: Slow network detected")       
+        time.sleep(3)
 
         close_cookie_popup()
-        
+       
         print("Opening search box...")
         search_box = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, ".header__search")))
         search_box.click()
         time.sleep(1)
-        
+
         print("Entering SKU...")
         search_input = wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, 'input[placeholder*="yhledat"]')))
         search_input.clear()
@@ -178,19 +136,17 @@ def search_for_sku(sku):
 
         print("Submitting search...")
         search_input.send_keys(Keys.ENTER)
-        
+
         print("Waiting for results to load...")
         try:
-            WebDriverWait(driver, 5).until(
-                EC.presence_of_element_located((By.CSS_SELECTOR, ".product-card"))
-            )
+            WebDriverWait(driver, 15).until(EC.presence_of_element_located((By.CSS_SELECTOR, ".product-card")))
         except:
-            time.sleep(2)
+            time.sleep(5)
 
         print("Search completed successfully")
         return True
-        
-    except Exception as e:
+
+    except Exceptions as e:
         print(f"Search failed: {str(e)}")
         take_screenshot("search_error")
         return False
@@ -456,7 +412,7 @@ class StepCounter:
         self.step += 1
 
 
-def fill_order_form():
+def fill_order_form(user_email, test_phone):
     try:
         ship_to = choose_address() #is a dictionary
         print(f"Chosen address in: {str(ship_to['city'])}")
@@ -813,7 +769,6 @@ def proceed_to_checkout():
         return False
 
 def verify_free_shipping():
-    # Verify that free shipping is applied for orders over 70€
     try:
         print("Verifying free shipping...")
         
@@ -856,74 +811,63 @@ def verify_free_shipping():
         return False
 
 # Main execution
-if __name__ == "__main__":
+def main_cz(email, phone):
+    global driver, wait
+    
     try:
-        
-        start_total = time.time()
-        
         # Initialize step counter
         step_counter = StepCounter()
-        print("Running CZ script")
         print("---------------LOGS FOR NERDS---------------")
+        user_email = email
+        test_phone = phone
+
+        print("\nLaunching browser...")
+        driver = create_optimized_driver()
+        driver.maximize_window()
+        wait = WebDriverWait(driver, 20)
         
         # Initialize variables for summary
-        sku = choose_sku()
         delivery_option = "Default"
+        sku = choose_sku()
         payment_option = "Default"
         free_shipping_result = "Not checked"
         order_result = None
         order_price = None
         basket_price = None
+        free_shipping_result = None
         
         print(f"Chosen SKU: {str(sku)}")
         
         step_counter.print_step("Searching for SKU")
-        step_start = time.time()
         
         if search_for_sku(sku):
-            print(f"✓ Search took: {time.time() - step_start:.1f}s")
             step_counter.print_step("Getting offer ID")
-            step_start = time.time()
             offer_id = get_offer_id_for_sku(sku)
-            print(f"✓ Get offer ID took: {time.time() - step_start:.1f}s")
             
             if offer_id:
                 step_counter.print_step("Adding to cart via API")
-                step_start = time.time()
                 
                 if add_to_cart_via_api(offer_id, 1):
-                    print(f"✓ Add to cart took: {time.time() - step_start:.1f}s")    
-
+                    step_counter.print_step("Refreshing page to synchronize UI")
+                    driver.refresh()
+                    time.sleep(3)
                     step_counter.print_step("Navigating to cart")
-                    step_start = time.time()
                     
                     if navigate_to_cart_directly():
-                        print(f"✓ Navigate to cart took: {time.time() - step_start:.1f}s")
-                        step_counter.print_step("Checking cart contents")
-                        step_start = time.time()
-                        
+                        step_counter.print_step("Checking cart contents")                        
                         if check_cart_contents(sku):
-                            print(f"✓ Checking cart contents took: {time.time() - step_start:.1f}s")
                             step_counter.print_step("Getting basket total price")
-                            step_start = time.time()
                             basket_price = get_total_price()
                             
                             if basket_price is not None:
-                                print(f"Basket total price: {basket_price}")
-                                take_screenshot("basket_with_price")
-                                print(f"✓ Getting basket total price took: {time.time() - step_start:.1f}s")
+                                print(f"Basket total price: {basket_price}")                                                     
                                 
-                                step_counter.print_step("Proceeding to checkout")
-                                step_start = time.time()
-                                
-                                if proceed_to_checkout():
-                                    print(f"✓ Proceeding to checkout took: {time.time() - step_start:.1f}s")
-                                    step_counter.print_step("Getting order page total price")
-                                    step_start = time.time()
+                                step_counter.print_step("Proceeding to checkout")                            
+                                if proceed_to_checkout():                                   
+                                    step_counter.print_step("Getting order page total price")        
                                     order_price = get_total_price()
                                     
-                                    if order_price is not None:
-                                        print(f"✓ Getting order page total price took: {time.time() - step_start:.1f}s")
+                                    if order_price is not None:                                       
                                         print(f"Order page total price: {order_price}")
                                         take_screenshot("order_with_price")
                                         
@@ -931,12 +875,8 @@ if __name__ == "__main__":
                                         if abs(basket_price - order_price) < 0.01:  # Account for floating point precision
                                             print("✓ SUCCESS: Prices match between basket and order pages!")
                                             print(f"✓ Total price: {order_price}")
-
-                                            step_counter.print_step("Filling order form")
-                                            step_start = time.time()
-                                            form_success = fill_order_form()
-
-                                            if form_success:
+                                            
+                                            if fill_order_form(user_email, test_phone):
                                                 # Store item price before fees
                                                 item_price_czk = order_price
 
@@ -963,8 +903,7 @@ if __name__ == "__main__":
                                                 step_counter.print_step("Placing order")
                                                 order_result = place_order()
 
-                                                if order_result:
-                                                    print(f"✓ Placing order took: {time.time() - step_start:.1f}s")
+                                                if order_result:                
                                                     if isinstance(order_result, str):
                                                         print(f"✓ Order successfully placed! Order number: {order_result}")
                                                     else:
@@ -1015,10 +954,13 @@ if __name__ == "__main__":
         time.sleep(3)
         
     except Exception as e:
-        print(f"\n❌ Script failed with error: {str(e)}")
-        take_screenshot("main_script_error")        
-   
+        print(f"\n✗ Script failed with error: {str(e)}")
+        take_screenshot("main_script_error")
+
     finally:
         driver.quit()
+   
+if __name__ == "__main__":
+    main_de()
 
 

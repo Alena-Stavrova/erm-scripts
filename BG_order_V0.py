@@ -677,7 +677,7 @@ def proceed_to_checkout():
             raise Exception("Could not find checkout button")
 
         # Scroll to the button if needed
-        driver.execute_sript("arguments[0].scrollIntoView({block: 'center', behavior: 'smooth'});", checkout_button)
+        driver.execute_script("arguments[0].scrollIntoView({block: 'center', behavior: 'smooth'});", checkout_button)
         time.sleep(1)
 
         take_screenshot("before_checkout_click")
