@@ -4,8 +4,8 @@ import DE_order_V0 as de
 import ES_order_V0 as es
 import EU_order_V0 as eu
 import HU_order_V0 as hu
-#import IT_order_V0 as it
-#import PL_order_V0 as pl
+import IT_order_V0 as it
+import PL_order_V0 as pl
 
 import random
 
@@ -16,12 +16,15 @@ script_modules = {
     'ES': es,
     'EU': eu,
     'HU': hu,
-    #'IT': it,
-    #'PL': pl,
+    'IT': it,
+    'PL': pl,
     }
 
-scripts_string = input('Type countries space-separated, like "ES EU PL": ')
-scripts_to_run = scripts_string.upper().split() # is a list
+scripts_string = input('Type countries space-separated, like "ES EU PL" or "8" to run ALL the scripts: ')
+if scripts_string == "8":
+    scripts_to_run = ['BG', 'CZ', 'DE', 'ES', 'EU', 'HU', 'IT', 'PL']
+else: 
+    scripts_to_run = scripts_string.upper().split() # is a list
 
 # Shuffles the list randomly to run scripts in diff order
 random.shuffle(scripts_to_run)
