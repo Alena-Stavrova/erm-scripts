@@ -77,11 +77,9 @@ def take_screenshot(name):
     return filename
 
 def extract_price(price_text):
-    # Extract numeric price from text
-    # Remove currency symbols, spaces, and other non-numeric characters except decimal point
-    clean_text = re.sub(r'[^\d,]', '', price_text)
-    # Replace comma with dot if needed (for European format)
-    clean_text = clean_text.replace(',', '.')
+    # Remove all characters except digits and the comma/dot
+    # Only EU, US have dot (23.95 EU - no need to replace), the rest have comma
+    clean_text = re.sub(r'[^\d.]', '', price_text)
     try:
         return float(clean_text)
     except ValueError:
