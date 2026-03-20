@@ -237,52 +237,49 @@ def get_offer_id_for_sku(sku):
         return None
     
 def add_to_cart_via_api(offer_id, quantity=1):
-    # Add item to card using the direct API call
+    # Simple API call - no UI updates attempted, relies on page refresh to update the cart
     try:
-        print("Adding item to cart via API...")
-
-        # Execute JS to make the API call
+        print(f"Adding offer {offer_id} to cart via API...")
+        
         script = f"""
-            // Make the API call to add to cart
             fetch('/rest/methods/user/basket/change', {{
                 method: 'POST',
-                headers: {{
-                    'Content-Type': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest'
-                }},
-                body: JSON.stringify({{offerId: {offer_id}, quantity: {quantity}}})
+                headers: {{'Content-Type': 'application/json'}},
+                body: JSON.stringify({{offerId: {offer_id}, quantity: "{quantity}"}})
             }})
             .then(response => response.json())
             .then(data => {{
-                console.log('API response:', data);
-                // Update the UI to reflect the cart change
-                if (data.result && data.result.basket) {{
-                    // Update add to cart button to show counter
-                    const addButtons = document.querySelectorAll('.product-card__basket');
-                    addButtons.forEach(button => {{
-                        if (button.closest('[data-offer-id="{offer_id}"]') || 
-                            button.closest('[data-product-id="{offer_id}"]')) {{
-                            button.innerHTML = '<div class="counter"><button type="button" class="counter-btn counter-minus">-</button><input type="number" value="{quantity}" min="1" max="999"><button type="button" class="counter-btn counter-plus">+</button></div>';
-                        }}
-                    }});
-                }}
+                console.log('API Response:', data);
+                // Store success state for verification
+                window.lastCartAdd = {{
+                    success: true,
+                    offerId: {offer_id},
+                    timestamp: Date.now()
+                }};
             }})
             .catch(error => {{
-                console.error('API error:', error);
+                console.error('API Error:', error);
+                window.lastCartAdd = {{success: false, error: error.message}};
             }});
-        """
-
-        # Execute JS
+        """        
         driver.execute_script(script)
-
-        # Wait for the UI to update
-        time.sleep(3)
-        print("API call completed successfully")
-        return True
-
+        time.sleep(2)  # Wait for API call
+        
+        # Verify it worked
+        check_script = """
+            return window.lastCartAdd || {success: false, error: 'No response'};
+        """
+        result = driver.execute_script(check_script)
+        
+        if result.get('success'):
+            print(f"✓ API call successful for offer {offer_id}")
+            return True
+        else:
+            print(f"✗ API call failed: {result.get('error')}")
+            return False
+            
     except Exception as e:
-        print(f"Failed to add to cart via API: {str(e)}")
-        take_screenshot("api_add_error")
+        print(f"✗ Error in API call: {e}")
         return False
 
 def navigate_to_cart_directly():
