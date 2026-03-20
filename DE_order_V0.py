@@ -8,6 +8,8 @@ import time
 import re
 import random
 import os
+import traceback
+import sys
 
 # Initialize driver with None (to be changed later)
 driver = None
@@ -32,6 +34,25 @@ def create_optimized_driver():
     
     return driver
 
+def take_screenshot(name):
+    # Create screenshot folder, name screenshot images
+    if not os.path.exists("screenshots"):
+        os.makedirs("screenshots")
+
+    filename = f"screenshots/{name}_{int(time.time())}.png"
+    driver.save_screenshot(filename)
+    print(f"(Screenshot saved as: {filename})")
+    return filename
+
+# Step counter class to count step number automatically
+class StepCounter:
+    def __init__(self):
+        self.step = 1
+    
+    def print_step(self, message):
+        print(f"\n--- Step {self.step}: {message} ---")
+        self.step += 1
+    
 # Choose random SKU:
 def choose_sku():
     # First 5 are under 70 EU, last 5 are 70+
@@ -63,16 +84,6 @@ def choose_address():
 ]
     addresses = shipping_addresses[random.randint(0,2)]
     return(addresses)   # Returns a dictionary
-
-def take_screenshot(name):
-    # Helper function that takes screenshots for debugging
-    if not os.path.exists("screenshots"):
-        os.makedirs("screenshots")
-
-    filename = f"screenshots/{name}_{int(time.time())}.png"
-    driver.save_screenshot(filename)
-    print(f"Screenshot saved as: {filename}")
-    return filename
 
 def extract_price(price_text):
     # Extract numeric price from text
@@ -328,15 +339,6 @@ def select_payment_option():
         print(f"Error in payment selection process: {str(e)}")
         take_screenshot("payment_option_error")
         return False, "Error"
-
-# Create a simple step counter class
-class StepCounter:
-    def __init__(self):
-        self.step = 1
-
-    def print_step(self, message):
-        print(f"\n--- Step {self.step}: {message} ---")
-        self.step += 1
 
 def fill_order_form(user_email, test_phone):
     try:
