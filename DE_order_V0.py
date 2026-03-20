@@ -130,7 +130,6 @@ def get_total_price():
         return None
 
 def close_cookie_popup():
-    # Close the cookie consent popup if present
     try:
         accept_button = WebDriverWait(driver, 5).until(
                     EC.element_to_be_clickable((By.CSS_SELECTOR, ".cky-btn.cky-btn-accept"))
@@ -141,11 +140,10 @@ def close_cookie_popup():
         return True    
      
     except Exception as e:
-        print(f"Error handling cookie popup: {str(e)}")
+        print(f"✗ Error handling cookie popup: {str(e)}")
         return False
 
 def search_for_sku(sku):
-    # Search for a specific SKU
     try:
         print("Navigating to main page...")
         driver.get(website_main)
@@ -165,18 +163,32 @@ def search_for_sku(sku):
 
         print("Submitting search...")
         search_input.send_keys(Keys.ENTER)
-
         print("Waiting for results to load...")
+        
         try:
-            WebDriverWait(driver, 15).until(EC.presence_of_element_located((By.CSS_SELECTOR, ".product-card")))
+            WebDriverWait(driver, 5).until(EC.presence_of_element_located((By.CSS_SELECTOR, ".product-card")))
         except:
             time.sleep(5)
 
-        print("Search completed successfully")
-        return True
+        # Find card SKU line, like "SKU: 83836"
+        card_sku_elem = driver.find_element(By.CLASS_NAME, 'catalog-card__article') # REPLACE selector, copied from LVH
+        card_sku = card_sku_elem.text[-5:]
+        print(f"SKU on the product card is: {card_sku}")
 
-    except Exceptions as e:
-        print(f"Search failed: {str(e)}")
+        # Scroll to the element to take screenshot
+        driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", card_sku_elem)
+        time.sleep(2)
+        take_screenshot("search_results")
+
+        if sku == card_sku:        
+            print("✓ Search completed successfully")
+            return True
+        else:
+            print(f"✗ First found item doesn't match the search: looked for {sku}, first item is {card_sku}")
+            return False
+        
+    except Exception as e:
+        print(f"✗ Search failed: {str(e)}")
         take_screenshot("search_error")
         return False
 
