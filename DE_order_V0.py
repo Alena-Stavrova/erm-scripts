@@ -228,12 +228,14 @@ def get_offer_id_for_sku(sku):
         if offer_id:
             print(f"Found offer ID {offer_id}")
             return int(offer_id)
-
+        else:
+            print("✗ No offer ID found on container")
+            return None
+            
     except Exception as e:
-        print(f"Failed to get offer ID: {str(e)}")
-        take_screenshot("offer_id_error")
+        print(f"✗ Error finding offer ID: {str(e)}")
         return None
-
+    
 def add_to_cart_via_api(offer_id, quantity=1):
     # Add item to card using the direct API call
     try:
