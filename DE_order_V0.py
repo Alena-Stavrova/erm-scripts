@@ -261,7 +261,8 @@ def add_to_cart_via_api(offer_id, quantity=1):
                 console.error('API Error:', error);
                 window.lastCartAdd = {{success: false, error: error.message}};
             }});
-        """        
+        """ 
+        
         driver.execute_script(script)
         time.sleep(2)  # Wait for API call
         
@@ -269,6 +270,7 @@ def add_to_cart_via_api(offer_id, quantity=1):
         check_script = """
             return window.lastCartAdd || {success: false, error: 'No response'};
         """
+        
         result = driver.execute_script(check_script)
         
         if result.get('success'):
@@ -285,7 +287,7 @@ def add_to_cart_via_api(offer_id, quantity=1):
 def navigate_to_cart_directly():
     # Navigate to the cart page directly by URL
     try:
-        cart_url = "https://de.ermenrich.com/basket/"
+        cart_url = website_main + "basket/"
         print(f"Navigating to cart URL: {cart_url}")
 
         driver.get(cart_url)
@@ -294,30 +296,77 @@ def navigate_to_cart_directly():
         # Check if we're on a cart page
         current_url = driver.current_url.lower()
         if "basket" in current_url:
-            print("Successfully navigated to cart page")
+            print("✓ Successfully navigated to cart page")
             return True
         else:
-            print(f"Not on cart page. Current URL: {driver.current_url}")
+            print(f"✗ Not on cart page. Current URL: {driver.current_url}")
             return False
 
     except Exception as e:
-        print(f"Failed to navigate to cart: {str(e)}")
+        print(f"✗ Failed to navigate to cart: {str(e)}")
         take_screenshot("cart_navigation_error")
         return False
 
-def check_cart_contents(sku):
-    # Check if the cart has our item
-    print("Checking cart contents...")
+def check_cart_contents(sku, expected_quantity=1):
+   # Verify our item is in the basket
+    cart_items = driver.find_elements(By.CSS_SELECTOR, 
+        "div[class*='cart-table__item'][id^='basket-item-']") #<===== UPDATE selectors for ERM
+    total_qty = 0
+    found = False
+    
+    for cart_item in cart_items:  # cart_item is the whole DIV for a basket item
+        # Check if this cart item has our SKU
+        if str(sku) in cart_item.text:
+            found = True
+            # Get quantity directly in element counter
+            qty_input = cart_item.find_element(By.CSS_SELECTOR, 
+                "[data-entity='basket-item-quantity-field']") #<===== UPDATE selectors for ERM
+            qty = int(qty_input.get_attribute('value'))
+            total_qty += qty
+            print(f"✓ Found SKU {sku}, quantity: {qty}")
+    
+    if not found:
+        print(f"✗ SKU {sku} not found")
+        return False
+    
+    print(f"Total quantity: {total_qty}, Expected: {expected_quantity}")
+    return total_qty == expected_quantity
+
+def proceed_to_checkout():
+    # Click the checkout button and verify redirection to order page
     try:
-        sku_element = driver.find_element(By.XPATH, f"//*[contains(text(), 'ID: {sku}')]")
-        take_screenshot("cart_with_our_item")
-        return True
+        print("Looking for checkout button...")
+        checkout_button = driver.find_element(By.XPATH, f"//*[contains(text(), 'Zur Kasse')]")
+        if checkout_button and checkout_button.is_displayed():
+            print(f"Found checkout button")
+
+        if not checkout_button:
+            raise Exception("Could not find checkout button...")
+
+        print("Clicking checkout button...")
+        checkout_button.click()
+
+        # Wait for the order page to load
+        print("Waiting for order page to load...")
+        WebDriverWait(driver, 15).until(
+            EC.url_contains("order")
+        )
+
+        # Verify we're on the order page
+        current_url = driver.current_url.lower()
+        if "order" in current_url:
+            print(f"✓ Successfully navigated to order page: {driver.current_url}")
+            return True
+        else:
+            print(f"✗ Not on order page. Current URL: {driver.current_url}")
+            take_screenshot("not_on_order_page")
+            return False
 
     except Exception as e:
-        print(f"Error checking cart contents: {str(e)}")
-        take_screenshot("cart_check_error")
+        print(f"✗ Failed to proceed to checkout: {str(e)}")
+        take_screenshot("checkout_error")
         return False
-
+        
 def select_payment_option():
     # Randomly select a payment option for orders over 70€ using element IDs
     try:
@@ -696,48 +745,7 @@ def place_order():
         take_screenshot("final_order_error")
         return False
 
-def proceed_to_checkout():
-    # Click the checkout button and verify redirection to order page
-    try:
-        print("Looking for checkout button...")
-        checkout_button = driver.find_element(By.XPATH, f"//*[contains(text(), 'Zur Kasse')]")
-        if checkout_button and checkout_button.is_displayed():
-            print(f"Found checkout button")
 
-        if not checkout_button:
-            raise Exception("Could not find checkout button...")
-
-        # Scroll to the button if needed
-        driver.execute_script("arguments[0].scrollIntoView({block: 'center', behavior: 'smooth'});", checkout_button)
-        time.sleep(1)
-
-        take_screenshot("before_checkout_click")
-
-        # Click the button
-        print("Clicking checkout button...")
-        checkout_button.click()
-
-        # Wait for the order page to load
-        print("Waiting for order page to load...")
-        WebDriverWait(driver, 15).until(
-            EC.url_contains("order")
-        )
-
-        # Verify we're on the order page
-        current_url = driver.current_url.lower()
-        if "order" in current_url:
-            print(f"Successfully navigated to order page: {driver.current_url}")
-            take_screenshot("order_page")
-            return True
-        else:
-            print(f"Not on order page. Current URL: {driver.current_url}")
-            take_screenshot("not_on_order_page")
-            return False
-
-    except Exception as e:
-        print(f"Failed to proceed to checkout: {str(e)}")
-        take_screenshot("checkout_error")
-        return False
 
 def verify_free_shipping():
     # Verify that free shipping is applied for orders over 70€
