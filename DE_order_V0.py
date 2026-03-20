@@ -367,7 +367,7 @@ def proceed_to_checkout():
         take_screenshot("checkout_error")
         return False
         
-def select_payment_option():
+def select_payment_option(): #<==== NOT EDITED
     # Randomly select a payment option for orders over 70€ using element IDs
     try:
         print("Selecting payment option...")
@@ -567,6 +567,7 @@ def fill_order_form(user_email, test_phone):
             print(f"✗ Error with address field: {str(e)}")
             take_screenshot("address_field_error")
             return False
+            
         # Postal code field
         try:
             postal_code_field = WebDriverWait(driver, 5).until(EC.element_to_be_clickable((By.ID, "bx-input-order-ZIP_SHIP")))
@@ -612,30 +613,22 @@ def fill_order_form(user_email, test_phone):
         take_screenshot("order_form_error")
         return False
 
-def rename_screenshots_folder(order_number):
-    # Rename screenshots folder with order number
+def verify_free_shipping(): #<===== UPDATE SELECTOR
+# CONSIDER changing - doesn't verify, returns text, prices in other scripts
     try:
-        source = "C:/Users/astavrova/Desktop/Алена (врем.)/0 - автоматизация/orders/lvh-auto-tests/daily/screenshots"
-        dest = f"C:/Users/astavrova/Desktop/Алена (врем.)/0 - автоматизация/orders/lvh-auto-tests/daily/{order_number}"
-        
-        if os.path.exists(source):
-            os.rename(source, dest)
-            print(f"✓ Screenshots folder renamed to: {order_number}")
-        else:
-            print(f"✗ Screenshots folder not found at: {source}")
+        print("Verifying free shipping...")
+        time.sleep(2)
+        free_shipping_element = wait.until(
+            EC.presence_of_element_located((By.ID, "bx-cost-shipping"))
+        )    
+        return free_shipping_element.text
             
-    except OSError as error:
-        print(f"✗ Could not rename folder: {error}")
-        # Create a new folder with order number anyway
-        try:
-            dest = f"C:/Users/astavrova/Desktop/Алена (врем.)/0 - автоматизация/orders/lvh-auto-tests/monthly/{order_number}"
-            os.makedirs(dest, exist_ok=True)
-            print(f"✓ Created folder: {order_number}")
-        except:
-            pass
+    except Exception as e:
+        print(f"Error verifying free shipping: {str(e)}")
+        take_screenshot("free_shipping_verification_error")
+        return False
 
 def place_order():
-    # Finalize the order by clicking the checkout button on the order form
     try:
         print("Placing order...")
         
@@ -645,133 +638,17 @@ def place_order():
         checkout_button = WebDriverWait(driver, 10).until(
             EC.element_to_be_clickable((By.ID, "submit"))
         )
-        print(f"✓ Found checkout button: '{checkout_button.text}'")
+        print(f"Found checkout button: '{checkout_button.text}'")
 
         # Scroll to button
         driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", checkout_button)
         time.sleep(1)
         checkout_button.click()
-
-        # IMMEDIATELY check for JavaScript/form validation errors
-        time.sleep(2)  # Give time for any JS validation to run
-        
-        # Check for the "already exists" error specifically
-        error_found = False
-        error_text = ""
-        
-        # Try multiple ways to find error messages
-        error_selectors = [
-            # By specific error text (most reliable)
-            (By.XPATH, "//*[contains(text(), 'besteht bereits')]"),
-            
-            # By CSS classes that might indicate errors
-            (By.CSS_SELECTOR, ".alert-content")
-        ]
-
-        for by, selector in error_selectors:
-            try:
-                elements = driver.find_elements(by, selector)
-                for elem in elements:
-                    if elem.is_displayed():
-                        error_text = elem.text[:100] if elem.text else "Unknown error"
-                        print(f"✗ Found error: {error_text}")
-                        error_found = True
-                        take_screenshot(f"order_error_{by[1][:20]}")
-                        break
-                if error_found:
-                    break
-            except:
-                continue
-        
-        if error_found:
-            print("✗ Order blocked by error - NOT placed")
-            return False
-        
-        # If no errors found, check for success
-        print("No errors detected, checking for order confirmation...")
-        
-        # Wait a bit for potential redirect
-        time.sleep(3)
-
-        # Check 1: Success URL with ORDER_ID
-        current_url = driver.current_url
-        if "ORDER_ID=" in current_url:
-            try:
-                import urllib.parse
-                parsed_url = urllib.parse.urlparse(current_url)
-                query_params = urllib.parse.parse_qs(parsed_url.query)
-                order_number = query_params.get('ORDER_ID', [None])[0]
-                
-                if order_number:
-                    print(f"✓ ORDER CONFIRMED! Order number: {order_number}")
-                    take_screenshot("order_confirmation")
-                    
-                    # Handle payment popups if any
-                    main_window = driver.current_window_handle
-                    if len(driver.window_handles) > 1:
-                        print("Closing payment popup tabs...")
-                        for handle in driver.window_handles:
-                            if handle != main_window:
-                                driver.switch_to.window(handle)
-                                driver.close()
-                        driver.switch_to.window(main_window)
-                    
-                    # Rename screenshots folder
-                    rename_screenshots_folder(order_number)
-                    return order_number
-            except Exception as e:
-                print(f"✗ Could not parse order number: {str(e)}")
-
-        # Check 2: Are we still on the order page? (form didn't submit)
-        if "order" in current_url and "ORDER_ID=" not in current_url:
-            # Check if submit button is still there
-            try:
-                still_exists = driver.find_elements(By.ID, "submit")
-                if still_exists:
-                    print("✗ Still on order page with submit button - order NOT placed")
-                    take_screenshot("still_on_order_page")
-                    return False
-            except:
-                pass
-        
-        # If we're unsure
-        print("✗ Order status unclear after submission")
-        print("Check email to confirm")
-        take_screenshot("order_status_unclear")
-        return False  # Be conservative
-        
+        return True
+     
     except Exception as e:
         print(f"✗ Error in final order submission: {str(e)}")
         take_screenshot("final_order_error")
-        return False
-
-
-
-def verify_free_shipping():
-    # Verify that free shipping is applied for orders over 70€
-    try:
-        print("Verifying free shipping...")
-        
-        # Wait a moment for the page to update after address entry
-        time.sleep(2)
-        
-        # Look for the free shipping element
-        free_shipping_element = wait.until(
-            EC.presence_of_element_located((By.ID, "bx-cost-shipping"))
-        )
-        
-        # Check if the element contains "Free shipping" text
-        if "Kostenloser Versand" in free_shipping_element.text:
-            print("✓ Free shipping verified successfully!")
-            return True
-        else:
-            print(f"✗ Free shipping not applied. Shipping cost: {free_shipping_element.text}")
-            take_screenshot("shipping_cost_error")
-            return False
-            
-    except Exception as e:
-        print(f"Error verifying free shipping: {str(e)}")
-        take_screenshot("free_shipping_verification_error")
         return False
 
 # Main execution
@@ -798,10 +675,42 @@ def main_de(email, phone):
         order_price = None
         basket_price = None
         free_shipping_result = None
+
+        while True:
+            # Only choose the skus that are NOT in unavailable_items
+            my_sku, price_class = choose_sku()
+            if my_sku != None:
+                print(f"Chosen SKU: {str(my_sku)}")
+
+                step_counter.print_step("Searching for SKU")
+                # Avaialability check already includes search_for_sku
+                available, status = is_item_available(my_sku)
+    
+                if available:
+                    print(f"✓ SKU {my_sku} is available")
+                    break
+                # If item is NOT available:
+                else:
+                    if len(items_unavailable) < total_skus: 
+                        print(f"✗ SKU {my_sku} not available: {status}")
+                        items_unavailable.append(str(my_sku))
+                        time.sleep(1)  # Small delay before retry
+
+            # If choose_sku() returns None, meaning all items are unavailable
+            else:
+                print("✗ All items are UNAVAILABLE")
+                print("Closing the browser")
+                driver.quit()
+                sys.exit()
         
-        print(f"Chosen SKU: {str(sku)}")
-        
-        step_counter.print_step("Searching for SKU")
+        if price_class == 1:
+            exp_ship_fee = "Kostenloser Versand"
+        else:
+            exp_ship_fee = "noch festzulegen"
+        ship_verified = False
+
+        step_counter.print_step("Getting offer ID")
+        offer_id = get_offer_id(my_sku)
 
         if search_for_sku(sku):
             step_counter.print_step("Getting offer ID")
@@ -818,7 +727,7 @@ def main_de(email, phone):
 
                     if navigate_to_cart_directly():
                         step_counter.print_step("Checking cart contents")
-                        if check_cart_contents(sku):
+                        if check_cart_contents(my_sku):
                             step_counter.print_step("Getting basket total price")
                             basket_price = get_total_price()
 
@@ -839,42 +748,29 @@ def main_de(email, phone):
                                             print("✓ SUCCESS: Prices match between cart and order pages!")
                                             print(f"✓ Total price: {order_price}")
 
-                                            if fill_order_form(user_email, test_phone):
-                                            # Check if order value is over 70€ and select payment option if needed
+                                            fill_form_success, delivery_option_summary, payment_option_summary = fill_order_form(user_email, test_phone)
+                                            if fill_form_success:
+                                                ship_cost = verify_free_shipping()
+                                                if ship_cost == exp_ship_fee:
+                                                    ship_verified = True
+                                                    print(f"✓ Shipping fee as expected: {ship_cost}")
+                                           
+                                                    step_counter.print_step("Placing order")
+                                                    order_result = place_order()
 
-                                                if order_price >= 70:
-                                                    step_counter.print_step("Verifying free shipping")                        
+                                                    if order_result:
+                                                        print("✓ Order successfully placed!")
+                                                        time.sleep(3)
+                                                        step_counter.print_step("Getting the order number")
+                                                        test_order_num = get_order_number()
 
-                                                    # Store the result instead of just calling it
-                                                    free_shipping_result = verify_free_shipping()
-                                                    if not free_shipping_result:
-                                                        print("✗ Free shipping verification failed, but continuing with order")       
-
-
-
-                                                    step_counter.print_step("Selecting payment option")
-                                                    payment_success, chosen_payment_option = select_payment_option()
-                                                    if not payment_success:
-                                                        print("✗ Payment selection failed, but continuing with order process")
-                                                    payment_option_for_summary = chosen_payment_option # <-- UPDATE
+                                                    else:
+                                                        print("✗ Failed to place order")
 
                                                 else:
-                                                    print("Order value below 70€, using default payment option")
+                                                    print(f"✗ Shipping fees don't match: expected {exp_ship_fee}, found {ship_cost}")
                                                     payment_option_for_summary = "TBD (default for <70€)"  # <-- SET
 
-
-                                                step_counter.print_step("Placing order")
-                                                order_result = place_order()
-
-                                                if order_result:
-                                                    if isinstance(order_result, str):
-                                                        print(f"✓ Order successfully placed! Order number: {order_result}")
-                                                    else:
-                                                        print("✓ Order successfully placed!")                                                                                                      
-
-                                                else:
-                                                    print("✗ Failed to place order")  
-                                                
                                             else:
                                                 print("✗ Failed to fill order form")
                                             
