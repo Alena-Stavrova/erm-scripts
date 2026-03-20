@@ -192,8 +192,25 @@ def search_for_sku(sku):
         take_screenshot("search_error")
         return False
 
+def is_item_available(sku):
+    # Is only applied when sku != None
+    try:
+        search_for_sku(sku)
+        price_text = driver.find_element(By.CLASS_NAME, "catalog-card__price").text.lower()
+        unavailable_indicators = ["nicht auf lager", "nicht mehr erhältlich", "demnächst verfügbar"]
+        if any(indicator in price_text for indicator in unavailable_indicators):
+            return False, price_text
+        else:
+            cart_button = driver.find_element(By.CLASS_NAME, "catalog-card__cart")
+            if cart_button.is_displayed():
+                return True, "available"
+            else:
+                return False, "unclear"
+
+    except Exception as e:
+        return False, str(e)
+
 def get_offer_id_for_sku(sku):
-    # Extract the offerID for the product with the given SKU
     try:
         print("Finding product offer ID...")
 
