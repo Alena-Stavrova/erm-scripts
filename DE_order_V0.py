@@ -52,14 +52,31 @@ class StepCounter:
     def print_step(self, message):
         print(f"\n--- Step {self.step}: {message} ---")
         self.step += 1
-    
+
+# List of SKUS and price classes
+skus_0 = [83836, 83820, 84547, 84545, 83089] # Under 70 EU, ERMEN only
+skus_1 = [84558, 84638, 84087, 83842, 85574] #70+ EU, ERMEN only
+items_unavailable = []
+total_skus = len(skus_0) + len(skus_1)
+
 # Choose random SKU:
 def choose_sku():
-    # First 5 are under 70 EU, last 5 are 70+
-    skus = [83836, 83820, 84547, 84545, 83089, 84558, 84638, 84087, 82544, 85574]
-    sku_num = random.randint(0,9)
-    sku = skus[sku_num]
-    return sku
+    # Try both price classes if needed
+    price_classes_to_try = [0, 1]
+    random.shuffle(price_classes_to_try)  # Try in random order
+    
+    for price_class in price_classes_to_try:
+        if price_class == 0:
+            available_skus = [str(sku) for sku in skus_0 if str(sku) not in items_unavailable]
+        else:  # price_class == 1
+            available_skus = [str(sku) for sku in skus_1 if str(sku) not in items_unavailable]
+        
+        if available_skus:
+            return random.choice(available_skus), price_class
+    
+    # If we get here, both classes have no available SKUs
+    print("✗ WARNING: No available SKUs in either price class!")
+    return None, None
 
 def choose_address():
     shipping_addresses = [
@@ -86,11 +103,12 @@ def choose_address():
     return(addresses)   # Returns a dictionary
 
 def extract_price(price_text):
-    # Extract numeric price from text
-    # Remove currency symbols, spaces and other non-numeric chars except decimal point
+    # Remove all characters except digits and the comma/dot
+    # Only EU, US have dot (23.95 EU - no need to replace), the rest have comma
     clean_text = re.sub(r'[^\d,]', '', price_text)
-    # Replace comma with dot if needed (for European format)
+    # Replace comma with dot 
     clean_text = clean_text.replace(',', '.')
+    # clean_text = clean_text.replace(',', '.')    
     try:
         return float(clean_text)
     except ValueError:
@@ -99,17 +117,16 @@ def extract_price(price_text):
 def get_total_price():
     # Extract the total price in the Basket
     try:
-        price_element = driver.find_element(By.CLASS_NAME, 'cart-panel__result-price')
-        price_text = price_element.text
+        price_text = driver.find_element(By.CLASS_NAME, 'cart-panel__result-price').text
         price = extract_price(price_text)
         if price is not None:
             return price
 
-        print("Could not find total price on page")
+        print("✗ Could not find total price on page")
         return None
 
     except Exception as e:
-        print(f"Error extracting price: {str(e)}")
+        print(f"✗ Error extracting price: {str(e)}")
         return None
 
 def close_cookie_popup():
