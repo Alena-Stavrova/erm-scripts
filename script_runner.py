@@ -4,7 +4,7 @@ import DE_random_V2 as de
 import ES_order_V0 as es
 import EU_order_V0 as eu
 import HU_order_V0 as hu
-import IT_order_V0 as it
+import IT_random_V1 as it
 import PL_order_V0 as pl
 
 import random
