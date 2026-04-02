@@ -251,9 +251,6 @@ class OrderContextDE(ParentContext):
         # Just return the shipping fee display string
         ship_display, _ = self.get_expected_shipping_fee()
         return ship_display, None
-   
-    def update_summary(self, **kwargs):
-        self.summary.update(kwargs)
 
 # Choose random sku, return a string and int price class
 def choose_sku(order):
@@ -539,7 +536,7 @@ def proceed_to_checkout():
     # Click the checkout button, verify Basket > Order page
     try:
         # Check selector - better remove XPATH/text
-        checkout_button = driver.find_element(By.XPATH, f"//*[contains(text(), 'Zur Kasse')]")
+        checkout_button = driver.find_element(By.CSS_SELECTOR, ".btn.btn-primary.text-uppercase.w-100.fs-18.fs-xxl-24")
         if checkout_button and checkout_button.is_displayed():
             print(f"Found checkout button")
                                 
