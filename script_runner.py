@@ -1,10 +1,10 @@
-import BG_order_V0 as bg
+import BG_random_V3 as bg
 import CZ_order_V0 as cz
-import DE_random_V2 as de
+import DE_random_V3 as de
 import ES_order_V0 as es
 import EU_order_V0 as eu
 import HU_order_V0 as hu
-import IT_random_V1 as it
+import IT_random_V3 as it
 import PL_order_V0 as pl
 
 import random

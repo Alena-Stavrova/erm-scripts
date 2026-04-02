@@ -55,93 +55,21 @@ class StepCounter:
         print(f"\n--- Step {self.step}: {message} ---")
         self.step += 1
 
-# Container for all order-related data
-class OrderContext:
+# Container for general order data and functions
+class ParentContext:
     def __init__(self):
         self.user_email = None
         self.user_phone = None
-    
-        self.sku_lists = {
-            'price_classes': {
-                0: [83836, 83820, 84547, 84545, 83089], # Under 70 EU
-
-                1: [84558, 84638, 84087, 83842, 85574] # 70+ EU
-            }
-        }
 
         self.sku = {
             'selected': None,
             'price_class': None,
-            'unavailable': []     # Track unavailable SKUs
+            'unavailable': []   # Track unavailable SKUs
         }
 
-        self.delivery_options = [
-                {            
-                    "local_name": "kurierzustellung",
-                    "en_name": "courier",
-                    "opt_id": "ID_SHIPPING_METHOD_ID_16",
-                    'is_default': True
-                    }
-                ]
-    
-        self.selected_delivery = None
+        self.selected_delivery = None 
 
-        self.payment_options = [
-                {
-                    "local_name": "überweisung",
-                    "en_name": "Bank transfer",
-                    "opt_id": "ID_PAY_SYSTEM_ID_32",
-                    'is_default': True,
-                    'compatible_with': {
-                        'delivery': 'kurierzustellung',
-                        'price_class': [1]
-                    }    
-                },
-                {
-                    "local_name": "kredit-/ec-karte",
-                    "en_name": "Credit/debit card",
-                    "opt_id": "ID_PAY_SYSTEM_ID_45",
-                    'compatible_with': {
-                        'delivery': 'kurierzustellung',
-                        'price_class': [1]
-                    }
-                },
-                {
-                    "local_name": "PayPal",
-                    "en_name": "PayPal",
-                    "opt_id": "ID_PAY_SYSTEM_ID_33",
-                    'compatible_with': {
-                        'delivery': 'kurierzustellung',
-                        'price_class': [1]
-                    }
-                },
-                {
-                    "local_name": "TBD",   # Actually no name displayed
-                    "en_name": "TBD",
-                    "opt_id": None,
-                    'is_default': True,
-                    'is_virtual': True,    # Virtual = no UI element, but should be tracked for summary
-                    'compatible_with': {
-                        'delivery': 'kurierzustellung',
-                        'price_class': [0]
-                    }
-                }   
-            ]
-    
         self.selected_payment = None
-
-        self.fees = {
-                'shipping': {
-                    'standard': {
-                        'under_70': {
-                            'display': 'noch festzulegen'
-                        },
-                        'over_70': {
-                            'display': 'Kostenloser Versand'
-                        }
-                    }
-                }
-            }
 
         # Results summary
         self.summary = {
@@ -151,27 +79,33 @@ class OrderContext:
             'order_result': None,
             'expected_fee': None,
             'order_fee': None}
-
+    
     def get_sku_list(self, price_class):
         # Returns the SKU list for a specific price class
         return self.sku_lists['price_classes'][price_class]
-
+    
     def get_all_skus(self):
         # Get all SKUs from both price classes
         all_skus = self.sku_lists['price_classes'][0] + self.sku_lists['price_classes'][1]
         return all_skus
-
+    
     def mark_sku_unavailable(self, sku):
         # Add a SKU to the unavailable list
         if sku not in self.sku['unavailable']:
             self.sku['unavailable'].append(sku)
-    
+
     def get_default_delivery(self):
         for option in self.delivery_options:
             if option.get('is_default', False):
                 return option
         # If no default marked, return first one
         return self.delivery_options[0] if self.delivery_options else None
+    
+    def get_delivery_option_by_name(self, local_name):
+        for option in self.delivery_options:
+            if option['local_name'] == local_name:
+                return option
+        return None
 
     def get_available_payment_options(self):
         if not self.sku.get('price_class') is None:
@@ -199,22 +133,106 @@ class OrderContext:
                 available.append(option)
         
         return available
-    
+
     def get_default_payment(self):
         available = self.get_available_payment_options()
-        
+
         for option in available:
             if option.get('is_default', False):
                 return option
-        
+            
         return available[0] if available else None
 
-    # NO cash payment
+    def get_cash_payment(self):
+        for option in self.payment_options:
+            if option.get('is_cash', False):
+                return option
+        return None
+        
+    def update_summary(self, **kwargs):
+        self.summary.update(kwargs)
+
+# Container for all order-related data
+class OrderContextDE(ParentContext):
+    def __init__(self):
+        super().__init__()
+        
+        self.sku_lists = {
+            'price_classes': {
+                0: [83836, 83820, 84547, 84545, 83089], # Under 70 EU
+
+                1: [84558, 84638, 84087, 83842, 85574] # 70+ EU
+            }
+        }
+
+        self.delivery_options = [
+                {            
+                    'local_name': 'kurierzustellung',
+                    'en_name': 'courier',
+                    'opt_id': 'ID_SHIPPING_METHOD_ID_16',
+                    'is_default': True
+                    }
+                ]
+
+        self.payment_options = [
+                {
+                    'local_name': "überweisung",
+                    'en_name': "Bank transfer",
+                    'opt_id': "ID_PAY_SYSTEM_ID_32",
+                    'is_default': True,
+                    'compatible_with': {
+                        'delivery': 'kurierzustellung',
+                        'price_class': [1]
+                    }    
+                },
+                {
+                    'local_name': 'kredit-/ec-karte',
+                    'en_name': 'Credit/debit card',
+                    'opt_id': 'ID_PAY_SYSTEM_ID_45',
+                    'compatible_with': {
+                        'delivery': 'kurierzustellung',
+                        'price_class': [1]
+                    }
+                },
+                {
+                    'local_name': 'PayPal',
+                    'en_name': 'PayPal',
+                    'opt_id': 'ID_PAY_SYSTEM_ID_33',
+                    'compatible_with': {
+                        'delivery': 'kurierzustellung',
+                        'price_class': [1]
+                    }
+                },
+                {
+                    'local_name': 'TBD',   # Actually no name displayed
+                    'en_name': 'TBD',
+                    'opt_id': None,
+                    'is_default': True,
+                    'is_virtual': True,    # Virtual = no UI element, but should be tracked for summary
+                    'compatible_with': {
+                        'delivery': 'kurierzustellung',
+                        'price_class': [0]
+                    }
+                }   
+            ]
+
+        self.fees = {
+                'shipping': {
+                    'standard': {
+                        'under_70': {
+                            'display': 'noch festzulegen'
+                        },
+                        'over_70': {
+                            'display': 'Kostenloser Versand'
+                        }
+                    }
+                }
+            }
 
     def get_expected_shipping_fee(self):
         if not self.selected_delivery:
             return None, None
-
+        
         price_class = self.sku['price_class']  # 0 = under 70, 1 = over 70
 
         # Only have standard delivery
@@ -226,11 +244,11 @@ class OrderContext:
         return self.fees['shipping']['standard'][tier]['display'], None # Return display string only
     
     def get_expected_payment_fee(self):
-        # DE has no payment fees
+        # No payment fees
         return None, None
     
     def get_expected_total_fee(self):
-        # For DE, just return the shipping fee display string
+        # Just return the shipping fee display string
         ship_display, _ = self.get_expected_shipping_fee()
         return ship_display, None
    
@@ -326,7 +344,7 @@ def search_for_sku(sku):
         time.sleep(1)
         
         print("Entering SKU...")
-        search_input = wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, 'input[placeholder*="uchen"]')))
+        search_input = wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, "input[data-iv-toggle='search']")))
         search_input.clear()
         search_input.send_keys(str(sku))
        
@@ -896,9 +914,9 @@ def get_order_number():
             # Slicing different number of characters for test ("T-") and regular orders
             # Will need to edit if > 99,999 orders
             if "T-" in current_url:
-                order_num = current_url[-14:]
+                order_num = current_url[-13:]
             else:
-                order_num = current_url[-12:]
+                order_num = current_url[-11:]
             print(f"✓ Order confirmed! Order number: {order_num}")
             return order_num
                 
@@ -922,7 +940,7 @@ def main_de(email, phone):
         user_email = email
         test_phone = phone
 
-        order = OrderContext()
+        order = OrderContextDE()
 
         print("\nLaunching browser...")
         driver = create_optimized_driver()
@@ -1056,7 +1074,7 @@ def main_de(email, phone):
         if fee_success:
             print(f"Order fee (shipping + payment): ✓ As expected, {order.summary['order_fee']}")
         else:
-            print(f"✗Shipping fees don't match: expected {order.summary['expected_fee']}, got {order.summary['order_fee']}")
+            print(f"✗ Shipping fees don't match: expected {order.summary['expected_fee']}, got {order.summary['order_fee']}")
         
         
         print("----------END----------")
