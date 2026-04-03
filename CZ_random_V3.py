@@ -306,7 +306,6 @@ def choose_sku(order):
             
             print(f"✓ Selected SKU: {selected_sku} (Price class: {price_class})")
             return selected_sku, price_class
-            return selected, price_class
     
     # If we get here, both classes have no available SKUs
     print("✗ WARNING: No available SKUs in either price class!")
@@ -570,7 +569,6 @@ def get_total_price_basket(order):
 def proceed_to_checkout():
     # Click the checkout button, verify Basket > Order page
     try:
-        # Check selector - better remove XPATH/text
         checkout_button = driver.find_element(By.CSS_SELECTOR, ".btn.btn-primary.text-uppercase.w-100.fs-18.fs-xxl-24")
         if checkout_button and checkout_button.is_displayed():
             print(f"Found checkout button")
@@ -740,45 +738,34 @@ def select_delivery_option(order):
                     return False, selected_name
         else:
             print(f"Using default delivery option ({default_name})")
-            
             # On CZ ERM must confirm the shop
             try:
-                confirm_button = WebDriverWait(driver, 10).until(
-                    EC.element_to_be_clickable((By.XPATH, 
-                    "//button[contains(text(), 'Vyzvednout')]")))
-                
-                driver.execute_script(
-                    "arguments[0].scrollIntoView({block: 'center', behavior: 'smooth'});",
-                    confirm_button
-                )
+                pickup_point = driver.find_element(By.CSS_SELECTOR, ".delivery-map__list .delivery-map__item")
+        
+                if not pickup_point:
+                    print("✗ No pickup points found.")
+                    return False, selected_name
+        
+                # Look for the confirmation button INSIDE the chosen pickup point
+                confirm_button = pickup_point.find_element(By.CSS_SELECTOR, "button[data-set-shop]")
+        
+                driver.execute_script("arguments[0].scrollIntoView({block: 'center', behavior: 'smooth'});", confirm_button)
                 time.sleep(0.5)
                 confirm_button.click()
-                print(f"Found confirmation button: '{confirm_button.text}'")
-                confirm_button.click()
-                print("Attempting to confirm shop pickup...")
+                print("Shop pickup confirmed by clicking button inside list item.")
                 time.sleep(1)
-
-                # Optional: Verify button changed to "Změnit"
-                try:
-                    zmienit_button = driver.find_element(By.CSS_SELECTOR, 
-                        "button[data-remove-shop]")
-                    if zmienit_button.is_displayed():
-                        print("Shop pickup selection verified (button changed to 'Změnit')")
-                except:
-                    print("✗ Could not verify button change, but proceeding")
-                
+        
                 return True, selected_name
-
+        
             except Exception as e:
                 print(f"✗ Failed to confirm shop pickup: {str(e)}")
                 take_screenshot("shop_pickup_confirmation_error")
                 return False, selected_name
-            
+                
     except Exception as e:
         print(f"✗ Error in delivery selection process: {str(e)}")
         take_screenshot("delivery_option_error")
         return False, "Error"
-
 
 def select_payment_option(order):
     try:
