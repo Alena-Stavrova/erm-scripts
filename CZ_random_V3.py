@@ -166,15 +166,6 @@ class OrderContextCZ(ParentContext):
         }
 
         self.delivery_options = [
-            {            
-                'local_name': 'Vyzvednutí',
-                'en_name': 'shop pickup',
-                'opt_id': 'ID_SHIPPING_METHOD_ID_4',
-                'is_default': True
-                }
-            ]
-        """
-        self.delivery_options = [
             {
                 'local_name': 'Vyzvednutí',
                 'en_name': 'shop pickup',
@@ -192,7 +183,6 @@ class OrderContextCZ(ParentContext):
                 'opt_id': 'ID_SHIPPING_METHOD_ID_3'
                 }
             ]
-            """
         
         self.payment_options = [
             {
