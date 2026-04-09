@@ -1,23 +1,22 @@
-# lvh-scripts
-Stack: Python, Selenium
+# Ermenrich Automated Orders Suite
+Countries:
 
-These scripts automate order placement that is a part of our regression testing/system health check. They imitate a real user's behavior:
-* go to the main page
-* search for a particular item (chosen randomly from a list of SKUs, the list contains different price groups)
-* add the item to cart
-* fill order form
-* select payment and/or delivery options randomly (whichever are available on a particular website). Sometimes includes interactive 3rd party elements (dropdowns, maps etc.)
-* place an order
-* print a helpful summary in the end (e.g. order number, item's price, cost of delivery etc.)
-* similar to Levenhuk scripts, but the websites layout and design differ  
+BG <img width="16" height="11" alt="BG flag" src="https://bg.levenhuk.com/upload/uf/914/ailuas7wc7b4u7esam52hmkb9k92qary/BG.svg"> |  CZ <img width="16" height="11" alt="CZ flag" src="https://cz.levenhuk.com/upload/uf/aae/3xkmguzh9wbv2rf1tihnbrwqe2g7opub/CZ.svg"> | DE <img width="16" height="11" alt="DE flag" src="https://de.levenhuk.com/upload/uf/c3d/0g1sijegx0japf8h3xrmfwe38yhzncs4/DE.svg"> | ES <img width="16" height="11" alt="ES flag" src="https://es.levenhuk.com/upload/uf/240/7xfauisyvrj1lvq4xo6ez8edulm4jx1b/ES.svg" /> | EU <img width="16" height="11" alt="EU flag" src="https://eu.levenhuk.com/upload/uf/3c6/mjgpqapw7zairhbqam8ti91z8koanis2/EU.svg" /> | HU <img width="16" height="11" alt="HU flag" src="https://hu.levenhuk.com/upload/uf/fd6/ff08i0019151736dcl9fx7y8gn4pizdv/HU.svg" /> | IT <img width="16" height="11" alt="IT flag" src="https://it.levenhuk.com/upload/uf/902/r191twfwccz3c5yrbdkt32r19fi4trzz/IT.svg"> | PL <img width="16" height="11" alt="PL flag" src="https://pl.levenhuk.com/upload/uf/004/b9fnsrp8csujk4mh0bnf0a3ykokyzm7d/PL.svg">  (8 / 8)
 
-Scripts done: IT <img width="16" height="11" alt="image" src="https://raw.githubusercontent.com/stevenrskelton/flag-icon/master/png/16/country-4x3/it.png"> (1 / 8)
+## Prerequisites / Requirements
 
-For each country, there will be 2 scripts:
-* <ins>random</ins>: choose payment and/or delivery option randomly; used for daily smoke tests where we typically test 1 random flow
-* <ins>choice</ins>: choose payment and/or delivery option that the user selects; can test any flow within possible payment/delivery combinations; used for montly system health check where we typically test all flows or all flows with 3rd-party systems
+- **Python 3.7 or higher** – [Download Python](https://www.python.org/downloads/)
+- **Google Chrome browser** – latest version recommended
+- **ChromeDriver** – matching your Chrome version (see below)
 
-UPD March 16 '26: I actually have a full collection of ERM scripts but the code is messy and bloated. I'm cleaning them up using LVH scripts as a standard/template. I'm also writing a runner script so that several ERM scripts can be run automatically one after another. Both goals require editing and cleaning the existing scripts, and it's a slow process. Meanwhile, the versions posted here are:
-* V0 = sloppy unedited version
-* V1 = current working version (edited), but doesn't work with the runner yet
-* V2 = edited version that is also compatible with the runner
+### ChromeDriver Setup
+
+This script requires ChromeDriver to control the Chrome browser.
+
+1. **Check your Chrome version**: Open Chrome, go to `chrome://settings/help`
+2. **Download ChromeDriver**: Visit [https://chromedriver.chromium.org/downloads](https://chromedriver.chromium.org/downloads) and download the version matching your Chrome
+3. **Place ChromeDriver**: 
+   * Either put `chromedriver.exe` in a folder that's in your system PATH
+   * Or place it in the same folder as the Python scripts
+
+**Note**: The scripts assume ChromeDriver is accessible via PATH. If you get a "WebDriver not found" error, you may need to specify the path manually.
