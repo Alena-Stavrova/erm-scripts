@@ -614,176 +614,119 @@ def proceed_to_checkout():
         return False
 
 def select_inpost(order):
-# Separate function for InPost delivery
     try:
-        # Step 1: Get InPost option from order context
-        inpost_option = order.get_delivery_option_by_name('InPost Paczkomaty')
-        if not inpost_option:
-            print("✗ InPost option not found")
-            return False, 'InPost Paczkomaty'
+        print("Selecting InPost Paczkomaty delivery method...")
         
-        # Step 2: Click the InPost radio button/label
-        inpost_element = WebDriverWait(driver, 5).until(
-            EC.element_to_be_clickable((By.CSS_SELECTOR, 
-                f"label[for='{inpost_option['opt_id']}']"))
-        )
-        inpost_element.click()
-        print("InPost delivery selected")
+        # Wait for the TomSelect dropdown to be ready and find it
+        print("Waiting for city dropdown to load...")
         time.sleep(2)
-
-        # Step 3: Select city using TomSelect
-        print("Selecting city...")
         city_input = WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable((By.CSS_SELECTOR, 
-                "input[id*='tomselect'][role='combobox']"))
+            EC.element_to_be_clickable((By.ID, "tomselect-2-ts-control"))
         )
+        
+        # Select a random big city 
+        big_cities = ["Warszawa", "Kraków", "Gdańsk", "Wrocław", "Poznań"]
+        selected_city = random.choice(big_cities)
+        print(f"Selecting city: {selected_city}")
         city_input.click()
         time.sleep(0.5)
-
-        # Choose a random city from Polish cities
-        cities = ["Warszawa", "Kraków", "Gdańsk", "Wrocław", "Poznań", "Łódź", "Katowice"]
-        selected_city = random.choice(cities)
-        print(f"Typing city: {selected_city}")
         
-        # Clear and type city name
-        city_input.clear()
-        city_input.send_keys(selected_city)
-        time.sleep(2)  # Wait for dropdown to filter
-
-        # Wait for dropdown options to appear and select the first one
-        dropdown_options = WebDriverWait(driver, 5).until(
-            EC.presence_of_all_elements_located((By.CSS_SELECTOR, ".ts-dropdown .option"))
-        )
         
-        # Find the exact match option
-        exact_match = None
-        for option in dropdown_options:
-            if option.text.strip().lower() == selected_city.lower():
-                exact_match = option
-                break
-        
-        if exact_match:
-            exact_match.click()
-            print(f"City selected: {selected_city}")
-            print("Waiting for INPOST_CITY hidden field to update...")
-            try:
-                # Try as select element first
-                inpost_city_select = WebDriverWait(driver, 10).until(
-                EC.presence_of_element_located((By.NAME, "INPOST_CITY"))
-                )
-                # Wait for it to have a selected option with value
-                WebDriverWait(driver, 10).until(
-                    lambda d: inpost_city_select.find_element(By.CSS_SELECTOR, "option[selected]").get_attribute("value") != ""
-                    )
-                selected_value = inpost_city_select.find_element(By.CSS_SELECTOR, "option[selected]").get_attribute("value")
-                print(f"✓ INPOST_CITY populated with value: {selected_value}")
-
-            except Exception as e:
-                print(f"⚠ Could not verify INPOST_CITY: {e}")
-        else:
-            print(f"✗ No exact match for '{selected_city}', pressing Enter")
-            city_input.send_keys(Keys.ENTER)
-        
-        # After city selection, print all hidden fields related to InPost
-        print("DEBUG: Looking for InPost-related hidden fields...")
-        all_hidden = driver.find_elements(By.CSS_SELECTOR, "input[type='hidden']")
-        for inp in all_hidden:
-            name = inp.get_attribute('name')
-            if name and ('inpost' in name.lower() or 'city' in name.lower() or 'store' in name.lower()):
-                print(f"  Found: name='{name}', value='{inp.get_attribute('value')}'")
-        
-        time.sleep(3)  # Wait for pickup points to load
-
-        # Step 4: Select pickup point
-        print("Selecting pickup point...")
-        
-        # Wait for pickup points to appear
-        WebDriverWait(driver, 15).until(
-            EC.presence_of_element_located((By.CSS_SELECTOR, ".delivery-map__item"))
-        )
-        
-        # Find all pickup point containers
-        pickup_items = driver.find_elements(By.CSS_SELECTOR, ".delivery-map__item")
-        print(f"Found {len(pickup_items)} pickup points")
-        
-        if not pickup_items:
-            print("✗ No pickup points found")
-            return False, 'InPost Paczkomaty'
-        
-        # Choose a random pickup point
-        chosen_item = random.choice(pickup_items)
-
-        # Get the address/title for logging
+        # Check if there's already a selected city and clear it
         try:
-            title_element = chosen_item.find_element(By.CSS_SELECTOR, ".delivery-map__title")
-            point_name = title_element.text
-            print(f"Selecting pickup point: {point_name[:50]}...")
+            # Look for the close/clear button (×) that appears when a city is selected
+            clear_buttons = driver.find_elements(By.CSS_SELECTOR, ".ts-control .item + .clear-button, .ts-control .remove")
+            if clear_buttons:
+                print("Buttons!")
+                clear_buttons[0].click()
+                time.sleep(0.5)
         except:
-            print("Selecting random pickup point")
+            pass
         
-        # Scroll to the item
-        driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", chosen_item)
+        # Type the city name and wait for dropdown
+        city_input.send_keys(selected_city)
+        time.sleep(2)
+        
+        # Select the city        
+        try:
+            dropdown_options = WebDriverWait(driver, 5).until(
+                EC.presence_of_all_elements_located((By.CSS_SELECTOR, ".ts-dropdown .option"))
+            )
+            
+            exact_match_found = False
+            for option in dropdown_options:
+                option_text = option.text.strip()
+                if option_text.lower() == selected_city.lower():
+                    print(f"Found exact match: {option_text}")
+                    # Click with JavaScript to ensure event fires
+                    driver.execute_script("arguments[0].click();", option)
+                    exact_match_found = True
+                    break
+            
+            if not exact_match_found:
+                print(f"✗ No exact match found for '{selected_city}', using first option")
+                city_input.send_keys(Keys.ENTER)
+                
+            else:
+                print(f"✓ City '{selected_city}' selected exactly")
+                
+        except Exception as e:
+            print(f"✗ Could not find dropdown options: {e}. Pressing Enter as fallback.")
+            city_input.send_keys(Keys.ENTER)
+            
+        # Wait for API call to complete and points to load
+        print("Waiting for pickup points to load...")
+        time.sleep(3)  
+
+
+        # Wait for at least some points to appear
+        WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.CSS_SELECTOR, "button.btn.btn-primary-light.w-100[data-reseller-id]"))
+        )
+        time.sleep(2)  # Extra wait for all points to render
+        
+        # Step 7: Find all pickup point buttons 
+        pickup_buttons = driver.find_elements(By.CSS_SELECTOR, "button.btn.btn-primary-light.w-100[data-reseller-id]")
+        
+        print(f"Found {len(pickup_buttons)} pickup point buttons")
+        
+        if len(pickup_buttons) == 0:
+            print("✗ No pickup points found!")
+            take_screenshot("no_pickup_points")
+            return False
+        
+        # Choose a random point
+        chosen_button = random.choice(pickup_buttons)
+        point_id = chosen_button.get_attribute("data-reseller-id")
+        point_text = chosen_button.text[:50] if chosen_button.text else "no text"
+        print(f"Selected point: ID={point_id}, Text='{point_text}'")
+
+        # Scroll into view and click with JavaScript
+        driver.execute_script("arguments[0].scrollIntoView({block: 'center', behavior: 'smooth'});", chosen_button)
         time.sleep(0.5)
 
-        # Click the "Odbierz tutaj" button inside the selected item
-        try:
-            pickup_button = chosen_item.find_element(By.CSS_SELECTOR, "button[data-set-shop]")
-            pickup_button.click()
-            print("Pickup point selected via button")
-        except:
-            # Fallback: click the whole item
-            chosen_item.click()
-            print("Pickup point selected via item click")
+        # Click with JavaScript to ensure all events fire
+        #driver.execute_script("arguments[0].click();", chosen_button)
+        chosen_button.click()
+        print(f"✓ Clicked pickup point: {point_id}")
+        time.sleep(1)
 
-            # Then look for confirmation
-            try:
-                confirm_btn = WebDriverWait(driver, 5).until(
-                    EC.element_to_be_clickable((By.XPATH, "//button[contains(text(), 'Potwierdź')]"))
-                )
-                confirm_btn.click()
-                print("✓ Confirmed selection")
-            except:
-                pass
-        time.sleep(2)
-
+        # Verify selection was successful
         try:
-        # Look for "Zatwierdź" (Confirm) or "Potwierdź" button
-            confirm_btn = WebDriverWait(driver, 5).until(
-                EC.element_to_be_clickable((By.XPATH, 
-                    "//button[contains(text(), 'Zatwierdź') or contains(text(), 'Potwierdź') or contains(text(), 'Wybierz')]"))
-            )
-            confirm_btn.click()
-            print("✓ Clicked confirmation button")
-            time.sleep(2)
-        except:
-            print("No additional confirmation button needed")
-
-        # Verify that a pickup point is now selected
-        try:
-            selected_shop = driver.find_element(By.CSS_SELECTOR, ".delivery-map__selected-shop")
-            if selected_shop.is_displayed():
+            # Look for confirmation that the pickup point was selected
+            success_elements = driver.find_elements(By.XPATH, "//*[contains(text(), 'Zmień')]")
+            if success_elements:
                 print("✓ Pickup point selection confirmed")
-            else:
-                print("⚠ Selection may not be confirmed")
         except:
-            print("⚠ Could not verify selection")
-
-         # Step 5: Verify selection (optional)
-        try:
-            # Check if the selected shop is displayed
-            selected_shop = driver.find_element(By.CSS_SELECTOR, ".delivery-map__selected-shop")
-            if selected_shop.is_displayed():
-                print("InPost pickup point selection confirmed")
-        except:
-            print("✗ Could not verify selection, but proceeding")
-
-        print("✓ InPost selection completed successfully")
-        return True, "InPost Paczkomaty"
+            print("✗ Could not verify selection visually, but proceeding")
+        
+        print("✓ InPost pickup point selected successfully")
+        return True
     
     except Exception as e:
-        print(f"✗ Failed to select InPost: {str(e)}")
+        print(f"Error selecting InPost delivery: {e}")
         take_screenshot("inpost_selection_error")
-        return False, "InPost Paczkomaty"
+        return False
 
 
 # For testing PPL pickup
