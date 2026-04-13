@@ -235,22 +235,6 @@ class OrderContextIT(ParentContext):
                         'display': 'Spedizione gratuita'
                     }
                 }
-            },
-            'payment': {
-                'cash': {
-                    'under_70': {
-                        'amount': 3,
-                        'display': '€3'
-                    },
-                    'over_70': {
-                        'amount': 3,
-                        'display': '€3'
-                    }
-                },
-                'other': {
-                    'amount': 0,
-                    'display': None  # No additional fee
-                }
             }
         }
 
@@ -276,22 +260,8 @@ class OrderContextIT(ParentContext):
         return fee_data['display'], fee_data['amount']
 
     def get_expected_payment_fee(self):
-        if not self.selected_payment:
-            return None, None
-        
-        is_cash = self.selected_payment.get('is_cash', False)
-        price_class = self.sku['price_class']
-        
-        if is_cash:
-            if price_class == 0:
-                tier = 'under_70'
-            else:
-                tier = 'over_70'
-            
-            fee_data = self.fees['payment']['cash'][tier]
-            return fee_data['display'], fee_data['amount']
-        else:
-            return None, 0  # No payment fee
+        # No payment fees
+        return None, None
 
     def get_expected_total_fee(self):
         ship_display, ship_amount = self.get_expected_shipping_fee()
