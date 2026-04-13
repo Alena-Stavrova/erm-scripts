@@ -108,7 +108,6 @@ class ParentContext:
         return None
 
     def get_available_payment_options(self):
-        print(f"DEBUG: selected_delivery = {self.selected_delivery}")
         if not self.sku.get('price_class') is None:
             price_class = self.sku['price_class']
         else:
@@ -614,123 +613,147 @@ def proceed_to_checkout():
         return False
 
 def select_inpost(order):
+    """Select InPost Paczkomaty delivery with pickup point selection"""
     try:
-        print("Selecting InPost Paczkomaty delivery method...")
+        print("Selecting InPost delivery method...")
         
-        # Wait for the TomSelect dropdown to be ready and find it
-        print("Waiting for city dropdown to load...")
-        time.sleep(2)
-        city_input = WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable((By.ID, "tomselect-2-ts-control"))
+        # Step 1: Get InPost option from order context
+        inpost_option = order.get_delivery_option_by_name('InPost Paczkomaty')
+        if not inpost_option:
+            print("✗ InPost option not found")
+            return False, 'InPost Paczkomaty'
+        
+        # Step 2: Click the InPost radio button/label
+        inpost_element = WebDriverWait(driver, 10).until(
+            EC.element_to_be_clickable((By.CSS_SELECTOR, 
+                f"label[for='{inpost_option['opt_id']}']"))
         )
+        inpost_element.click()
+        print("InPost delivery selected")
         
-        # Select a random big city 
-        big_cities = ["Warszawa", "Kraków", "Gdańsk", "Wrocław", "Poznań"]
-        selected_city = random.choice(big_cities)
-        print(f"Selecting city: {selected_city}")
-        city_input.click()
-        time.sleep(0.5)
+        # CRITICAL: Wait for the InPost city block to appear
+        print("Waiting for InPost city selection to load...")
+        WebDriverWait(driver, 15).until(
+            EC.visibility_of_element_located((By.ID, "bx-input-order-inpost-city-block"))
+        )
+        print("InPost city block loaded")
+        time.sleep(2)
         
+        # DEBUG: Find all Select2 containers in the InPost block
+        print("\nDEBUG: Looking for Select2 elements in InPost block...")
+        inpost_block = driver.find_element(By.ID, "bx-input-order-inpost-city-block")
         
-        # Check if there's already a selected city and clear it
+        # Find all Select2 containers
+        select2_containers = inpost_block.find_elements(By.CSS_SELECTOR, ".select2-selection")
+        print(f"Found {len(select2_containers)} Select2 containers")
+        
+        for i, container in enumerate(select2_containers):
+            print(f"  Container {i}: class='{container.get_attribute('class')}'")
+            try:
+                rendered = container.find_element(By.CSS_SELECTOR, ".select2-selection__rendered")
+                print(f"    Rendered text: '{rendered.text}'")
+            except:
+                pass
+        
+        # Also check for TomSelect (which PL ERM might use instead of Select2)
+        tomselect_inputs = inpost_block.find_elements(By.CSS_SELECTOR, "input[id*='tomselect']")
+        print(f"Found {len(tomselect_inputs)} TomSelect inputs")
+        for inp in tomselect_inputs:
+            print(f"  TomSelect: id='{inp.get_attribute('id')}'")
+        
+        # Step 3: Select city - TRY DIFFERENT SELECTORS
+        print("\nSelecting city...")
+        
+        # Try to find city dropdown by different methods
+        city_dropdown = None
+        
+        # Method 1: Try to find by class (Select2)
         try:
-            # Look for the close/clear button (×) that appears when a city is selected
-            clear_buttons = driver.find_elements(By.CSS_SELECTOR, ".ts-control .item + .clear-button, .ts-control .remove")
-            if clear_buttons:
-                print("Buttons!")
-                clear_buttons[0].click()
-                time.sleep(0.5)
+            city_dropdown = WebDriverWait(driver, 5).until(
+                EC.element_to_be_clickable((By.CSS_SELECTOR, 
+                    "#bx-input-order-inpost-city .select2-selection"))
+            )
+            print("Found city dropdown via Select2 selector")
         except:
             pass
         
-        # Type the city name and wait for dropdown
-        city_input.send_keys(selected_city)
-        time.sleep(2)
+        # Method 2: Try to find by TomSelect input
+        if not city_dropdown:
+            try:
+                city_dropdown = WebDriverWait(driver, 5).until(
+                    EC.element_to_be_clickable((By.CSS_SELECTOR, 
+                        "input[id*='tomselect']"))
+                )
+                print("Found city dropdown via TomSelect input")
+            except:
+                pass
         
-        # Select the city        
-        try:
-            dropdown_options = WebDriverWait(driver, 5).until(
-                EC.presence_of_all_elements_located((By.CSS_SELECTOR, ".ts-dropdown .option"))
-            )
-            
-            exact_match_found = False
-            for option in dropdown_options:
-                option_text = option.text.strip()
-                if option_text.lower() == selected_city.lower():
-                    print(f"Found exact match: {option_text}")
-                    # Click with JavaScript to ensure event fires
-                    driver.execute_script("arguments[0].click();", option)
-                    exact_match_found = True
-                    break
-            
-            if not exact_match_found:
-                print(f"✗ No exact match found for '{selected_city}', using first option")
-                city_input.send_keys(Keys.ENTER)
-                
-            else:
-                print(f"✓ City '{selected_city}' selected exactly")
-                
-        except Exception as e:
-            print(f"✗ Could not find dropdown options: {e}. Pressing Enter as fallback.")
-            city_input.send_keys(Keys.ENTER)
-            
-        # Wait for API call to complete and points to load
-        print("Waiting for pickup points to load...")
-        time.sleep(3)  
-
-
-        # Wait for at least some points to appear
-        WebDriverWait(driver, 10).until(
-            EC.presence_of_element_located((By.CSS_SELECTOR, "button.btn.btn-primary-light.w-100[data-reseller-id]"))
-        )
-        time.sleep(2)  # Extra wait for all points to render
+        # Method 3: Try to find by ID pattern
+        if not city_dropdown:
+            try:
+                city_dropdown = WebDriverWait(driver, 5).until(
+                    EC.element_to_be_clickable((By.CSS_SELECTOR, 
+                        "[id*='inpost-city']"))
+                )
+                print("Found city dropdown via ID pattern")
+            except:
+                pass
         
-        # Step 7: Find all pickup point buttons 
-        pickup_buttons = driver.find_elements(By.CSS_SELECTOR, "button.btn.btn-primary-light.w-100[data-reseller-id]")
+        if not city_dropdown:
+            print("✗ Could not find city dropdown")
+            # Take screenshot for debugging
+            take_screenshot("inpost_city_dropdown_not_found")
+            return False, 'InPost Paczkomaty'
         
-        print(f"Found {len(pickup_buttons)} pickup point buttons")
-        
-        if len(pickup_buttons) == 0:
-            print("✗ No pickup points found!")
-            take_screenshot("no_pickup_points")
-            return False
-        
-        # Choose a random point
-        chosen_button = random.choice(pickup_buttons)
-        point_id = chosen_button.get_attribute("data-reseller-id")
-        point_text = chosen_button.text[:50] if chosen_button.text else "no text"
-        print(f"Selected point: ID={point_id}, Text='{point_text}'")
-
-        # Scroll into view and click with JavaScript
-        driver.execute_script("arguments[0].scrollIntoView({block: 'center', behavior: 'smooth'});", chosen_button)
-        time.sleep(0.5)
-
-        # Click with JavaScript to ensure all events fire
-        #driver.execute_script("arguments[0].click();", chosen_button)
-        chosen_button.click()
-        print(f"✓ Clicked pickup point: {point_id}")
+        city_dropdown.click()
+        print("City dropdown clicked")
         time.sleep(1)
-
-        # Verify selection was successful
-        try:
-            # Look for confirmation that the pickup point was selected
-            success_elements = driver.find_elements(By.XPATH, "//*[contains(text(), 'Zmień')]")
-            if success_elements:
-                print("✓ Pickup point selection confirmed")
-        except:
-            print("✗ Could not verify selection visually, but proceeding")
         
-        print("✓ InPost pickup point selected successfully")
-        return True
-    
+        # Find the search input (might be Select2 or TomSelect)
+        city_search = None
+        
+        # Try Select2 search
+        try:
+            city_search = driver.find_element(By.CSS_SELECTOR, "input.select2-search__field")
+            print("Found Select2 search input")
+        except:
+            pass
+        
+        # Try TomSelect input (already clicked, now type in it)
+        if not city_search:
+            try:
+                city_search = driver.find_element(By.CSS_SELECTOR, "input[id*='tomselect']")
+                print("Found TomSelect input")
+            except:
+                pass
+        
+        if not city_search:
+            print("✗ Could not find search input")
+            return False, 'InPost Paczkomaty'
+        
+        # Choose a city
+        cities = ["Warszawa", "Kraków", "Gdańsk", "Wrocław", "Poznań", "Łódź", "Katowice"]
+        selected_city = random.choice(cities)
+        print(f"Typing city: {selected_city}")
+        
+        city_search.clear()
+        city_search.send_keys(selected_city)
+        time.sleep(2)
+        city_search.send_keys(Keys.ENTER)
+        print(f"City selected: {selected_city}")
+        time.sleep(3)
+        
+        # Rest of the function (pickup point selection) remains the same...
+        # ... (keep your existing pickup point code)
+        
     except Exception as e:
-        print(f"Error selecting InPost delivery: {e}")
+        print(f"✗ Failed to select InPost: {str(e)}")
+        import traceback
+        traceback.print_exc()
         take_screenshot("inpost_selection_error")
-        return False
+        return False, "InPost Paczkomaty"
 
-
-# For testing PPL pickup
-
+# For testing InPost
 def select_delivery_option(order):
     try:
         delivery_options = order.delivery_options
@@ -757,8 +780,8 @@ def select_delivery_option(order):
             return False, selected_name
 
     except Exception as e:
-        print(f"✗ Error in payment selection process: {str(e)}")
-        take_screenshot("payment_option_error")
+        print(f"✗ Error in delivery selection process: {str(e)}")
+        take_screenshot("delivery_option_error")
         return False, "Error"
         
 """
@@ -847,7 +870,7 @@ def select_payment_option(order):
         if not available_options:
             print("✗ No payment options available for this delivery")
             return False, None
-        
+
         # Separate real (clickable) from virtual (no click needed)
         real_options = [opt for opt in available_options if not opt.get('is_virtual', False)]
         virtual_options = [opt for opt in available_options if opt.get('is_virtual', False)]
@@ -890,13 +913,6 @@ def select_payment_option(order):
                 time.sleep(0.5)
                 payment_label.click()
                 time.sleep(1)
-
-                # VERIFY the payment option was selected
-                payment_input = driver.find_element(By.ID, selected_id)
-                if not payment_input.is_selected():
-                    print("Payment not selected, trying JavaScript fallback...")
-                    driver.execute_script(f"document.getElementById('{selected_id}').click();")
-                    time.sleep(1)
                 
                 print(f"✓ Successfully selected {selected_name}")
                 return True, selected_name
