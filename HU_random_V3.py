@@ -164,7 +164,7 @@ class OrderContextHU(ParentContext):
                 1: [84086,  84088, 84653, 84553, 83843]  # 50,000+ Ft
             }
         }
-    
+
         self.delivery_options = [
             {            
                 'local_name': 'Futárszolgálatos szállítás',
@@ -177,7 +177,9 @@ class OrderContextHU(ParentContext):
                 'en_name': 'shop pickup',
                 'opt_id': 'ID_SHIPPING_METHOD_ID_9'
                 }
-            ]
+        ]
+        
+    
        
         self.payment_options = [
             {
