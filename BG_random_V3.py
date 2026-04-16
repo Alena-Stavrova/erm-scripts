@@ -157,7 +157,7 @@ class OrderContextBG(ParentContext):
     
         self.sku_lists = {
             'price_classes': {
-                0: [84575, 83073, 84545, 83090, 84558], # Under 200 BGN
+                0: [84575, 85318, 84545, 83090, 84558], # Under 200 BGN
         
                 1: [84553, 84653, 84086, 84550, 84085]  # 200+ BGN
             }

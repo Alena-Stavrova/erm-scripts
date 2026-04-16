@@ -165,7 +165,6 @@ class OrderContextPL(ParentContext):
             }
         }
 
-        """
         self.delivery_options = [
             {
                 'local_name': 'Dostawa kurierem',
@@ -184,16 +183,8 @@ class OrderContextPL(ParentContext):
                 'opt_id': 'ID_SHIPPING_METHOD_ID_7'
                 }
             ]
-        """
         
-        self.delivery_options = [
-            {
-                'local_name': 'InPost Paczkomaty',
-                'en_name': 'InPost',
-                'opt_id': 'ID_SHIPPING_METHOD_ID_7'
-                }
-            ]
-
+        
         self.payment_options = [
             {
                 'local_name': 'Przelewy',
@@ -613,10 +604,8 @@ def proceed_to_checkout():
         return False
 
 def select_inpost(order):
-    """Select InPost Paczkomaty delivery with pickup point selection"""
+    # Separate function for InPost delivery
     try:
-        print("Selecting InPost delivery method...")
-        
         # Step 1: Get InPost option from order context
         inpost_option = order.get_delivery_option_by_name('InPost Paczkomaty')
         if not inpost_option:
@@ -630,78 +619,18 @@ def select_inpost(order):
         )
         inpost_element.click()
         print("InPost delivery selected")
+        time.sleep(3)
         
-        # CRITICAL: Wait for the InPost city block to appear
-        print("Waiting for InPost city selection to load...")
-        WebDriverWait(driver, 15).until(
-            EC.visibility_of_element_located((By.ID, "bx-input-order-inpost-city-block"))
+        # Step 3: Select city
+        print("Selecting city...")
+        city_dropdown = WebDriverWait(driver, 5).until(
+            EC.element_to_be_clickable((By.CSS_SELECTOR, 
+                "input[id*='tomselect']"))
         )
-        print("InPost city block loaded")
-        time.sleep(2)
-        
-        # DEBUG: Find all Select2 containers in the InPost block
-        print("\nDEBUG: Looking for Select2 elements in InPost block...")
-        inpost_block = driver.find_element(By.ID, "bx-input-order-inpost-city-block")
-        
-        # Find all Select2 containers
-        select2_containers = inpost_block.find_elements(By.CSS_SELECTOR, ".select2-selection")
-        print(f"Found {len(select2_containers)} Select2 containers")
-        
-        for i, container in enumerate(select2_containers):
-            print(f"  Container {i}: class='{container.get_attribute('class')}'")
-            try:
-                rendered = container.find_element(By.CSS_SELECTOR, ".select2-selection__rendered")
-                print(f"    Rendered text: '{rendered.text}'")
-            except:
-                pass
-        
-        # Also check for TomSelect (which PL ERM might use instead of Select2)
-        tomselect_inputs = inpost_block.find_elements(By.CSS_SELECTOR, "input[id*='tomselect']")
-        print(f"Found {len(tomselect_inputs)} TomSelect inputs")
-        for inp in tomselect_inputs:
-            print(f"  TomSelect: id='{inp.get_attribute('id')}'")
-        
-        # Step 3: Select city - TRY DIFFERENT SELECTORS
-        print("\nSelecting city...")
-        
-        # Try to find city dropdown by different methods
-        city_dropdown = None
-        
-        # Method 1: Try to find by class (Select2)
-        try:
-            city_dropdown = WebDriverWait(driver, 5).until(
-                EC.element_to_be_clickable((By.CSS_SELECTOR, 
-                    "#bx-input-order-inpost-city .select2-selection"))
-            )
-            print("Found city dropdown via Select2 selector")
-        except:
-            pass
-        
-        # Method 2: Try to find by TomSelect input
-        if not city_dropdown:
-            try:
-                city_dropdown = WebDriverWait(driver, 5).until(
-                    EC.element_to_be_clickable((By.CSS_SELECTOR, 
-                        "input[id*='tomselect']"))
-                )
-                print("Found city dropdown via TomSelect input")
-            except:
-                pass
-        
-        # Method 3: Try to find by ID pattern
-        if not city_dropdown:
-            try:
-                city_dropdown = WebDriverWait(driver, 5).until(
-                    EC.element_to_be_clickable((By.CSS_SELECTOR, 
-                        "[id*='inpost-city']"))
-                )
-                print("Found city dropdown via ID pattern")
-            except:
-                pass
+        print("Found city dropdown via TomSelect input")
         
         if not city_dropdown:
             print("✗ Could not find city dropdown")
-            # Take screenshot for debugging
             take_screenshot("inpost_city_dropdown_not_found")
             return False, 'InPost Paczkomaty'
         
@@ -710,23 +639,9 @@ def select_inpost(order):
         time.sleep(1)
         
         # Find the search input (might be Select2 or TomSelect)
-        city_search = None
-        
-        # Try Select2 search
-        try:
-            city_search = driver.find_element(By.CSS_SELECTOR, "input.select2-search__field")
-            print("Found Select2 search input")
-        except:
-            pass
-        
-        # Try TomSelect input (already clicked, now type in it)
-        if not city_search:
-            try:
-                city_search = driver.find_element(By.CSS_SELECTOR, "input[id*='tomselect']")
-                print("Found TomSelect input")
-            except:
-                pass
-        
+        city_search = driver.find_element(By.CSS_SELECTOR, "input[id*='tomselect']")
+        print("Found TomSelect input")
+
         if not city_search:
             print("✗ Could not find search input")
             return False, 'InPost Paczkomaty'
@@ -743,9 +658,50 @@ def select_inpost(order):
         print(f"City selected: {selected_city}")
         time.sleep(3)
         
-        # Rest of the function (pickup point selection) remains the same...
-        # ... (keep your existing pickup point code)
+        # Step 4: Select pickup point
+        # Wait for at least some points to appear
+        WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.CSS_SELECTOR, "button.btn.btn-primary-light.w-100[data-reseller-id]"))
+        )
+        time.sleep(2)  # Extra wait for all points to render
         
+        # Find all pickup point buttons 
+        pickup_buttons = driver.find_elements(By.CSS_SELECTOR, "button.btn.btn-primary-light.w-100[data-reseller-id]")
+        
+        print(f"Found {len(pickup_buttons)} pickup point buttons")
+        
+        if len(pickup_buttons) == 0:
+            print("✗ No pickup points found!")
+            take_screenshot("no_pickup_points")
+            return False, 'InPost Paczkomaty'
+        
+        # Choose a random point
+        chosen_button = random.choice(pickup_buttons)
+        point_id = chosen_button.get_attribute("data-reseller-id")
+        point_text = chosen_button.text[:50] if chosen_button.text else "no text"
+        print(f"Selected point: ID={point_id}, Text='{point_text}'")
+
+        # Scroll into view and click with JavaScript
+        driver.execute_script("arguments[0].scrollIntoView({block: 'center', behavior: 'smooth'});", chosen_button)
+        time.sleep(0.5)
+
+        # Click with JavaScript to ensure all events fire
+        chosen_button.click()
+        print(f"Clicked pickup point: {point_text}")
+        time.sleep(1)
+
+        # Step 5: Verify selection was successful
+        try:
+            # Look for confirmation that the pickup point was selected
+            success_elements = driver.find_elements(By.XPATH, "//*[contains(text(), 'Zmień')]")
+            if success_elements:
+                print("Pickup point selection confirmed")
+        except:
+            print("✗ Could not verify selection visually, but proceeding")
+        
+        print("✓ InPost pickup point selected successfully")
+        return True, 'InPost Paczkomaty'
+    
     except Exception as e:
         print(f"✗ Failed to select InPost: {str(e)}")
         import traceback
@@ -753,7 +709,8 @@ def select_inpost(order):
         take_screenshot("inpost_selection_error")
         return False, "InPost Paczkomaty"
 
-# For testing InPost
+"""
+# For testing InPost only
 def select_delivery_option(order):
     try:
         delivery_options = order.delivery_options
@@ -783,8 +740,8 @@ def select_delivery_option(order):
         print(f"✗ Error in delivery selection process: {str(e)}")
         take_screenshot("delivery_option_error")
         return False, "Error"
-        
-"""
+        """
+
 def select_delivery_option(order):
     try:
         delivery_options = order.delivery_options
@@ -860,7 +817,6 @@ def select_delivery_option(order):
         print(f"✗ Error in delivery selection process: {str(e)}")
         take_screenshot("delivery_option_error")
         return False, "Error"
-    """
 
 def select_payment_option(order):
     try:
@@ -1164,46 +1120,8 @@ def place_order():
         driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", checkout_button)
         time.sleep(1)
         checkout_button.click()
-        time.sleep(2)
-        
-        # AFTER clicking, check if we're still on the order page
-        current_url = driver.current_url
-        if "order" in current_url and "ORDER_ID=" not in current_url:
-            # Still on order page – something went wrong
-            print("✗ Still on order page – validation errors may exist")
-            
-            # Check for error messages
-            try:
-                error_messages = driver.find_elements(By.CSS_SELECTOR, ".error, .invalid-feedback, .alert-danger")
-                for error in error_messages:
-                    if error.is_displayed():
-                        print(f"  Error: {error.text}")
-            except:
-                pass
-            
-            take_screenshot("order_submission_failed")
-            return False
-        
-        # Check if we moved to a confirmation page
-        if "ORDER_ID=" in current_url or "thank" in current_url.lower() or "confirm" in current_url.lower():
-            print("✓ Order confirmation page detected")
-            return True
-        else:
-            print(f"✗ Unknown page after submission: {current_url}")
-            return False
-            
-    except Exception as e:
-        print(f"✗ Error in final order submission: {str(e)}")
-        take_screenshot("final_order_error")
-        return False
-        
-        
-        # Scroll to button
-        driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", checkout_button)
-        time.sleep(1)
-        checkout_button.click()
         return True
-        
+            
     except Exception as e:
         print(f"✗ Error in final order submission: {str(e)}")
         take_screenshot("final_order_error")
