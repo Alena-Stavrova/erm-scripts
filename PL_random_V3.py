@@ -165,6 +165,7 @@ class OrderContextPL(ParentContext):
             }
         }
 
+        """
         self.delivery_options = [
             {
                 'local_name': 'Dostawa kurierem',
@@ -181,6 +182,16 @@ class OrderContextPL(ParentContext):
                 'local_name': 'InPost Paczkomaty',
                 'en_name': 'InPost',
                 'opt_id': 'ID_SHIPPING_METHOD_ID_7'
+                }
+            ]
+        """
+        
+        self.delivery_options = [
+            {
+                'local_name': 'Dostawa kurierem',
+                'en_name': 'courier',
+                'opt_id': 'ID_SHIPPING_METHOD_ID_5',
+                'is_default': True
                 }
             ]
         
@@ -788,31 +799,9 @@ def select_delivery_option(order):
                     print(f"✗ Failed to click delivery option {selected_name}: {str(e)}")
                     return False, selected_name
         else:
-            print(f"Using default delivery option ({default_name})")
-            # On CZ ERM must confirm the shop
-            try:
-                pickup_point = driver.find_element(By.CSS_SELECTOR, ".delivery-map__list .delivery-map__item")
+            print(f"Using default delivery option ({default_name}), no action needed")
+            return True, selected_name
         
-                if not pickup_point:
-                    print("✗ No pickup points found.")
-                    return False, selected_name
-        
-                # Look for the confirmation button INSIDE the chosen pickup point
-                confirm_button = pickup_point.find_element(By.CSS_SELECTOR, "button[data-set-shop]")
-        
-                driver.execute_script("arguments[0].scrollIntoView({block: 'center', behavior: 'smooth'});", confirm_button)
-                time.sleep(0.5)
-                confirm_button.click()
-                print("Shop pickup confirmed by clicking button inside list item.")
-                time.sleep(1)
-        
-                return True, selected_name
-        
-            except Exception as e:
-                print(f"✗ Failed to confirm shop pickup: {str(e)}")
-                take_screenshot("shop_pickup_confirmation_error")
-                return False, selected_name
-                
     except Exception as e:
         print(f"✗ Error in delivery selection process: {str(e)}")
         take_screenshot("delivery_option_error")
@@ -1255,28 +1244,6 @@ def main_pl(email, phone):
                                         order.summary['order_fee'] = fee_display
                                             
                                     step_counter.print_step("Placing order")
-                                    print("DEBUG: Checking for empty required fields...")
-                                    empty_fields = driver.find_elements(By.CSS_SELECTOR, ".is-invalid, .error, input:invalid, select:invalid")
-                                    for field in empty_fields:
-                                        print(f"  Empty/invalid field: {field.get_attribute('name') or field.get_attribute('id')}")
-                                    print("Waiting for all form fields to stabilize...")
-                                    time.sleep(2)
-
-                                    inpost_city = driver.find_element(By.NAME, "INPOST_CITY").get_attribute("value")
-                                    if not inpost_city:
-                                        print("⚠ INPOST_CITY is empty! Waiting longer...")
-                                        time.sleep(3)
-                                        
-
-                                    # Check if newsletter checkbox needs to be handled
-                                    try:
-                                        newsletter_checkbox = driver.find_element(By.NAME, "SENDER_SUBSCRIBE_EMAIL")
-                                        if newsletter_checkbox.is_displayed() and not newsletter_checkbox.is_selected():
-                                            # Optionally check it or leave unchecked – just wait for it to be interactable
-                                            WebDriverWait(driver, 5).until(EC.element_to_be_clickable((By.NAME, "SENDER_SUBSCRIBE_EMAIL")))
-                                            print("Newsletter field ready")
-                                    except:
-                                        pass
                                     order_result = place_order()
 
                                     if order_result:
