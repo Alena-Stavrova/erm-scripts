@@ -165,7 +165,7 @@ class OrderContextPL(ParentContext):
             }
         }
 
-        """
+    
         self.delivery_options = [
             {
                 'local_name': 'Dostawa kurierem',
@@ -184,16 +184,7 @@ class OrderContextPL(ParentContext):
                 'opt_id': 'ID_SHIPPING_METHOD_ID_7'
                 }
             ]
-        """
         
-        self.delivery_options = [
-            {
-                'local_name': 'Dostawa kurierem',
-                'en_name': 'courier',
-                'opt_id': 'ID_SHIPPING_METHOD_ID_5',
-                'is_default': True
-                }
-            ]
         
         
         self.payment_options = [
