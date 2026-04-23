@@ -720,7 +720,7 @@ def select_delivery_option(order):
                     delivery_label.click()
                     time.sleep(1)
                 
-                    print(f"✓ Option clicked: {selected_name}")
+                    print(f"Option clicked: {selected_name}")
                     return True, selected_name
                 
                 except Exception as e:
