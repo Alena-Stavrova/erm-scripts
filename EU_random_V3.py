@@ -728,8 +728,8 @@ def fill_order_form(user_email, test_phone):
         # Order comment
         try:
             comment_field = driver.find_element(By.ID, "bx-input-order-USER_DESCRIPTION")
-            driver.execute_script('arguments[0].value = "Alena Auto Test\\nThis order was made by Alyona\'s helpful minions";', comment_field)
-            print("✓ Comment field filled")
+            driver.execute_script('arguments[0].value = "Alena Auto Test\\nThis order was made by Alena\'s helpful minions";', comment_field)
+            print("Comment field filled")
 
         except Exception as e:
             print(f"✗ Error with comment field: {str(e)}")
@@ -747,7 +747,7 @@ def fill_order_form(user_email, test_phone):
             # Wait a moment for the dropdown to appear and select the first option
             time.sleep(1)
             country_field.send_keys(Keys.ENTER)
-            print("✓ Country selected")
+            print("Country selected")
 
             # Add a small delay after country selection to allow any JS to process
             time.sleep(1)
