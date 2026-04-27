@@ -167,18 +167,18 @@ class OrderContextCZ(ParentContext):
 
         self.delivery_options = [
             {
-                'local_name': 'Vyzvednutí',
+                'local_name': 'vyzvednutí',
                 'en_name': 'shop pickup',
                 'opt_id': 'ID_SHIPPING_METHOD_ID_4',
                 'is_default': True
                 },
             {            
-                'local_name': 'PPL parcel box',
+                'local_name': 'ppl parcel box',
                 'en_name': 'ppl parcel box',
                 'opt_id': 'ID_SHIPPING_METHOD_ID_99'
                 },      
             {
-                'local_name': 'Doručení kurýrem',
+                'local_name': 'doručení kurýrem',
                 'en_name': 'courier',
                 'opt_id': 'ID_SHIPPING_METHOD_ID_3'
                 }
@@ -186,13 +186,13 @@ class OrderContextCZ(ParentContext):
         
         self.payment_options = [
             {
-                'local_name': 'Dobírka',
+                'local_name': 'dobírka',
                 'en_name': 'cash on delivery',
                 'opt_id': 'ID_PAY_SYSTEM_ID_10',
                 'is_default': True,
                 'is_cash': True,
                 'compatible_with': {
-                    'delivery':['Vyzvednutí', 'PPL parcel box', 'Doručení kurýrem'],
+                    'delivery':['vyzvednutí', 'ppl parcel box', 'doručení kurýrem'],
                     'price_class': [0, 1]
                 }
             },
@@ -201,16 +201,16 @@ class OrderContextCZ(ParentContext):
                 'en_name': 'credit card',
                 'opt_id': "ID_PAY_SYSTEM_ID_44",
                 'compatible_with': {
-                    'delivery':['Vyzvednutí', 'PPL parcel box', 'Doručení kurýrem'],
+                    'delivery':['vyzvednutí', 'ppl parcel box', 'doručení kurýrem'],
                     'price_class': [0, 1]
                 }
             },
             {
                 'local_name': 'paypal',
-                'en_name': 'PayPal',
+                'en_name': 'paypal',
                 'opt_id': 'ID_PAY_SYSTEM_ID_6',
                 'compatible_with': {
-                    'delivery':['Vyzvednutí', 'PPL parcel box', 'Doručení kurýrem'],
+                    'delivery':['vyzvednutí', 'ppl parcel box', 'doručení kurýrem'],
                     'price_class': [0, 1]
                 }
             }
@@ -594,7 +594,7 @@ def select_ppl(order):
 # Separate function for PPL delivery, used in select_delivery_option()
     try:
         print("Selecting PPL delivery method...")
-        ppl_option = order.get_delivery_option_by_name('PPL parcel box')
+        ppl_option = order.get_delivery_option_by_name('ppl parcel box')
         if not ppl_option:
             print("✗ PPL parcel box option not found")
             return False, 'ppl parcel box'
@@ -697,7 +697,7 @@ def select_delivery_option(order):
         default_name = default['local_name'] if default else None
 
         if selected_name != default_name:
-            if selected_name == 'PPL parcel box':
+            if selected_name == 'ppl parcel box':
                 succcess, name = select_ppl(order)
                 return succcess, name
             else:
