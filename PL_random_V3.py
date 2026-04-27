@@ -167,20 +167,21 @@ class OrderContextPL(ParentContext):
 
     
         self.delivery_options = [
+        # For consistency, use lower case here and then lower() strings
             {
-                'local_name': 'Dostawa kurierem',
+                'local_name': 'dostawa kurierem',
                 'en_name': 'courier',
                 'opt_id': 'ID_SHIPPING_METHOD_ID_5',
                 'is_default': True
                 },
             {            
-                'local_name': 'Odbiór osobisty w sklepie Levenhuk',
+                'local_name': 'odbiór osobisty w sklepie Levenhuk',
                 'en_name': 'shop pickup',
                 'opt_id': 'ID_SHIPPING_METHOD_ID_6'
                 },      
             {
-                'local_name': 'InPost Paczkomaty',
-                'en_name': 'InPost',
+                'local_name': 'inpost paczkomaty',
+                'en_name': 'inpost',
                 'opt_id': 'ID_SHIPPING_METHOD_ID_7'
                 }
             ]
@@ -189,31 +190,31 @@ class OrderContextPL(ParentContext):
         
         self.payment_options = [
             {
-                'local_name': 'Przelewy',
+                'local_name': 'przelewy',
                 'en_name': 'bank transfer',
                 'opt_id': 'ID_PAY_SYSTEM_ID_14',
                 'is_default': True,
                 'compatible_with': {
-                    'delivery':['Dostawa kurierem', 'Odbiór osobisty w sklepie Levenhuk', 'InPost Paczkomaty'],
+                    'delivery':['dostawa kurierem', 'odbiór osobisty w sklepie Levenhuk', 'inpost paczkomaty'],
                     'price_class': [0, 1]
                 }
             },
             {
-                'local_name': 'Opłata za pobraniem',
+                'local_name': 'opłata za pobraniem',
                 'en_name': 'cash on delivery',
                 'opt_id': "ID_PAY_SYSTEM_ID_25",
                 'is_cash': True,
                 'compatible_with': {
-                    'delivery':['Dostawa kurierem', 'Odbiór osobisty w sklepie Levenhuk', 'InPost Paczkomaty'],
+                    'delivery':['dostawa kurierem', 'odbiór osobisty w sklepie Levenhuk', 'inpost paczkomaty'],
                     'price_class': [0, 1]
                 }
             },
             {
                 'local_name': 'paypal',
-                'en_name': 'PayPal',
+                'en_name': 'paypal',
                 'opt_id': 'ID_PAY_SYSTEM_ID_12',
                 'compatible_with': {
-                    'delivery':['Dostawa kurierem', 'Odbiór osobisty w sklepie Levenhuk', 'InPost Paczkomaty'],
+                    'delivery':['dostawa kurierem', 'odbiór osobisty w sklepie Levenhuk', 'inpost paczkomaty'],
                     'price_class': [0, 1]
                 }
             }
@@ -237,7 +238,7 @@ class OrderContextPL(ParentContext):
                         'display': 'Darmowa dostawa'
                     }
                 },
-                'InPost': {
+                'inpost': {
                     'under_315': {
                         'amount': 15,  
                         'display': '15 zł'
@@ -609,10 +610,10 @@ def select_inpost(order):
     # Separate function for InPost delivery
     try:
         # Step 1: Get InPost option from order context
-        inpost_option = order.get_delivery_option_by_name('InPost Paczkomaty')
+        inpost_option = order.get_delivery_option_by_name('inpost paczkomaty')
         if not inpost_option:
             print("✗ InPost option not found")
-            return False, 'InPost Paczkomaty'
+            return False, 'inpost paczkomaty'
         
         # Step 2: Click the InPost radio button/label
         inpost_element = WebDriverWait(driver, 10).until(
@@ -760,7 +761,7 @@ def select_delivery_option(order):
         default_name = default['local_name'] if default else None
 
         if selected_name != default_name:
-            if selected_name == 'InPost Paczkomaty':
+            if selected_name == 'inpost paczkomaty':
                 succcess, name = select_inpost(order)
                 return succcess, name
             else:
