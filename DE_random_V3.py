@@ -1018,7 +1018,7 @@ def main_de(email, phone):
                                     step_counter.print_step("Selecting payment option")
                                     payment_success, payment = select_payment_option(order)
                                     if payment_success:
-                                        print(f"✓ Payment selected: {payment}")
+                                        print(f"Payment selected: {payment}")
                                         order.summary['payment_option'] = payment
                                     else:
                                         print("✗ Payment selection failed, but continuing with order process")
