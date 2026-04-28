@@ -167,13 +167,13 @@ class OrderContextHU(ParentContext):
 
         self.delivery_options = [
             {            
-                'local_name': 'Futárszolgálatos szállítás',
+                'local_name': 'futárszolgálatos szállítás',
                 'en_name': 'courier',
                 'opt_id': 'ID_SHIPPING_METHOD_ID_8',
                 'is_default': True
                 },
             {
-                'local_name': 'Átvevőponton történő átvétel',
+                'local_name': 'átvevőponton történő átvétel',
                 'en_name': 'shop pickup',
                 'opt_id': 'ID_SHIPPING_METHOD_ID_9'
                 }
@@ -181,31 +181,31 @@ class OrderContextHU(ParentContext):
         
         self.payment_options = [
             {
-                'local_name': 'Banki átutalás',
-                'en_name': 'Bank transfer',
+                'local_name': 'banki átutalás',
+                'en_name': 'bank transfer',
                 'opt_id': "ID_PAY_SYSTEM_ID_15",
                 'is_default': True,
                 'compatible_with': {
-                    'delivery':['Futárszolgálatos szállítás', 'Átvevőponton történő átvétel'],
+                    'delivery':['futárszolgálatos szállítás', 'átvevőponton történő átvétel'],
                     'price_class': [0, 1]
                 }
             },
             {
-                'local_name': 'Utánvétes fizetés',
-                'en_name': 'Cash on delivery',
+                'local_name': 'utánvétes fizetés',
+                'en_name': 'cash on delivery',
                 'opt_id': 'ID_PAY_SYSTEM_ID_26',
                 'is_cash': True,
                 'compatible_with': {
-                    'delivery':['Futárszolgálatos szállítás', 'Átvevőponton történő átvétel'],
+                    'delivery':['futárszolgálatos szállítás', 'átvevőponton történő átvétel'],
                     'price_class': [0, 1]
                 }
             },
             {
-                'local_name': 'PayPal',
-                'en_name': 'PayPal',
+                'local_name': 'paypal',
+                'en_name': 'paypal',
                 'opt_id': 'ID_PAY_SYSTEM_ID_20',
                 'compatible_with': {
-                    'delivery':['Futárszolgálatos szállítás', 'Átvevőponton történő átvétel'],
+                    'delivery':['futárszolgálatos szállítás', 'átvevőponton történő átvétel'],
                     'price_class': [0, 1]
                 }
             }
@@ -253,7 +253,7 @@ class OrderContextHU(ParentContext):
         delivery_name = self.selected_delivery['local_name']
         price_class = self.sku['price_class'] 
 
-        if delivery_name == 'Átvevőponton történő átvétel':
+        if delivery_name == 'átvevőponton történő átvétel':
             fee = self.fees['shipping']['shop pickup']['any']
             return fee, None  # Return display string only
         
@@ -842,28 +842,44 @@ def fill_order_form(user_email, test_phone):
         
         # City field 
         try:
-            # Wait for the city field to be interactable
-            city_field = WebDriverWait(driver, 5).until(
-                EC.element_to_be_clickable((By.ID, "bx-input-order-CITY_SHIP"))
+            # Wait for the whole order form container to be fully rendered
+            WebDriverWait(driver, 10).until(
+                EC.presence_of_element_located((By.ID, "CART-SIDEBAR-TARGET"))
             )
+            time.sleep(1)  # Small buffer for JS layout calculations
+    
+            # Now wait for city field specifically, with retry
+            city_field = None
+            for attempt in range(3):
+                try:
+                    city_field = WebDriverWait(driver, 10).until(
+                        EC.element_to_be_clickable((By.ID, "bx-input-order-CITY_SHIP"))
+                    )
             
-            # Scroll to the element to ensure it's in view
-            driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", city_field)
-            time.sleep(0.5)
+                    # Scroll into view
+                    driver.execute_script(
+                        "arguments[0].scrollIntoView({block: 'center'});", 
+                        city_field
+                    )
+                    time.sleep(0.3)
             
-            # Click on the field to ensure focus
-            city_field.click()
-            time.sleep(0.5)
+                    city_field.click()
+                    break  # Success!
             
-            # Clear and fill the field
+                except Exception as click_error:
+                    print(f"Attempt {attempt + 1}/3 failed: {str(click_error)[:100]}")
+                    time.sleep(2)
+    
+            if city_field is None:
+                raise Exception("Failed to click city field after 3 attempts")
+    
             city_field.clear()
-            city_field.send_keys(ship_to['city'])
+            city_field.send_keys(city_name)
             print("City field filled")
-            
-            # Press Tab to move to next field (this might help with form validation)
+    
             city_field.send_keys(Keys.TAB)
             time.sleep(0.5)
-            
+    
         except Exception as e:
             print(f"✗ Error with city field: {str(e)}")
             take_screenshot("city_field_error")

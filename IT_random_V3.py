@@ -182,7 +182,7 @@ class OrderContextIT(ParentContext):
         self.payment_options = [
             {
                 'local_name': 'bonifico bancario',
-                'en_name': 'Bank transfer',
+                'en_name': 'bank transfer',
                 'opt_id': "ID_PAY_SYSTEM_ID_19",
                 'is_default': True,
                 'compatible_with': {
@@ -192,7 +192,7 @@ class OrderContextIT(ParentContext):
             },
             {
                 'local_name': 'in contanti alla consegna',
-                'en_name': 'Cash on delivery',
+                'en_name': 'cash on delivery',
                 'opt_id': 'ID_PAY_SYSTEM_ID_17',
                 'is_cash': True,
                 'compatible_with': {
@@ -202,7 +202,7 @@ class OrderContextIT(ParentContext):
             },
             {
                 'local_name': 'carta di credito/debito',
-                'en_name': 'Credit/debit card',
+                'en_name': 'credit/debit card',
                 'opt_id': 'ID_PAY_SYSTEM_ID_46',
                 'compatible_with': {
                     'delivery': ['consegna standard'],
@@ -210,8 +210,8 @@ class OrderContextIT(ParentContext):
                 }
             },
             {
-                'local_name': 'PayPal',
-                'en_name': 'PayPal',
+                'local_name': 'paypal',
+                'en_name': 'paypal',
                 'opt_id': 'ID_PAY_SYSTEM_ID_18',
                 'compatible_with': {
                     'delivery': ['consegna standard', 'consegna espressa'],
