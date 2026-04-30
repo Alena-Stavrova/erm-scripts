@@ -176,9 +176,9 @@ class OrderContextDE(ParentContext):
 
         self.payment_options = [
                 {
-                    'local_name': "überweisung",
-                    'en_name': "Bank transfer",
-                    'opt_id': "ID_PAY_SYSTEM_ID_32",
+                    'local_name': 'überweisung',
+                    'en_name': 'bank transfer',
+                    'opt_id': 'ID_PAY_SYSTEM_ID_32',
                     'is_default': True,
                     'compatible_with': {
                         'delivery': 'kurierzustellung',
@@ -187,7 +187,7 @@ class OrderContextDE(ParentContext):
                 },
                 {
                     'local_name': 'kredit-/ec-karte',
-                    'en_name': 'Credit/debit card',
+                    'en_name': 'credit/debit card',
                     'opt_id': 'ID_PAY_SYSTEM_ID_45',
                     'compatible_with': {
                         'delivery': 'kurierzustellung',
@@ -195,8 +195,8 @@ class OrderContextDE(ParentContext):
                     }
                 },
                 {
-                    'local_name': 'PayPal',
-                    'en_name': 'PayPal',
+                    'local_name': 'paypal',
+                    'en_name': 'paypal',
                     'opt_id': 'ID_PAY_SYSTEM_ID_33',
                     'compatible_with': {
                         'delivery': 'kurierzustellung',

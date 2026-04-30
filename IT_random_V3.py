@@ -183,7 +183,7 @@ class OrderContextIT(ParentContext):
             {
                 'local_name': 'bonifico bancario',
                 'en_name': 'bank transfer',
-                'opt_id': "ID_PAY_SYSTEM_ID_19",
+                'opt_id': 'ID_PAY_SYSTEM_ID_19',
                 'is_default': True,
                 'compatible_with': {
                     'delivery':['consegna standard', 'consegna espressa'],
@@ -242,11 +242,11 @@ class OrderContextIT(ParentContext):
         if not self.selected_delivery:
             return None, None
 
-        delivery_name = self.selected_delivery['local_name']
+        delivery_name = self.selected_delivery['en_name']
         price_class = self.sku['price_class']  
 
         # Express delivery
-        if delivery_name == 'consegna espressa':
+        if delivery_name == 'express':
             fee = self.fees['shipping']['express']['any']
             return fee, None  # Return display string only
         
@@ -419,7 +419,7 @@ def is_item_available(order):
         search_for_sku(sku)
         price_text = driver.find_element(By.CLASS_NAME, "product-card__price").text.lower()
         # Check language file for the translations: out of stock, discontinued, coming soon
-        unavailable_indicators = ["non disponibile", "fuori produzione", "presto in arrivo"]
+        unavailable_indicators = ['non disponibile', 'fuori produzione', 'presto in arrivo']
         if any(indicator in price_text for indicator in unavailable_indicators):
             return False, price_text
         else:

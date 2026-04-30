@@ -175,7 +175,7 @@ class OrderContextBG(ParentContext):
         self.payment_options = [
                 {
                     'local_name': 'чрез банков превод',
-                    'en_name': 'Bank transfer',
+                    'en_name': 'bank transfer',
                     'opt_id': 'ID_PAY_SYSTEM_ID_30',
                     'is_default': True,
                     'compatible_with': {
@@ -185,7 +185,7 @@ class OrderContextBG(ParentContext):
                 },
                 {
                     'local_name': 'наложен платеж',
-                    'en_name': 'Cash on delivery',
+                    'en_name': 'cash on delivery',
                     'opt_id': 'ID_PAY_SYSTEM_ID_31',
                     'is_cash': True,
                     'compatible_with': {

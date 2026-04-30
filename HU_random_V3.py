@@ -250,10 +250,10 @@ class OrderContextHU(ParentContext):
         if not self.selected_delivery:
             return None, None
 
-        delivery_name = self.selected_delivery['local_name']
+        delivery_name = self.selected_delivery['en_name']
         price_class = self.sku['price_class'] 
 
-        if delivery_name == 'átvevőponton történő átvétel':
+        if delivery_name == 'shop pickup':
             fee = self.fees['shipping']['shop pickup']['any']
             return fee, None  # Return display string only
         
@@ -431,7 +431,7 @@ def is_item_available(order):
         search_for_sku(sku)
         price_text = driver.find_element(By.CLASS_NAME, "product-card__price").text.lower()
         # Check language file for the translations: out of stock, discontinued, coming soon
-        unavailable_indicators = ["Nincs raktáron", "Megszűnt", "Hamarosan érkezik"]
+        unavailable_indicators = ['nincs raktáron', 'megszűnt', 'hamarosan érkezik']
         if any(indicator in price_text for indicator in unavailable_indicators):
             return False, price_text
         else:
@@ -952,7 +952,6 @@ def verify_order_fee(order):
 
         actual_fee_amount = extract_price(actual_fee_text)
         
-        # Get expected fee from order context
         expected_display, expected_amount = order.get_expected_total_fee()
         order.summary['expected_fee'] = expected_display
         

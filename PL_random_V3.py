@@ -175,7 +175,7 @@ class OrderContextPL(ParentContext):
                 'is_default': True
                 },
             {            
-                'local_name': 'odbiór osobisty w sklepie Levenhuk',
+                'local_name': 'odbiór osobisty w sklepie levenhuk',
                 'en_name': 'shop pickup',
                 'opt_id': 'ID_SHIPPING_METHOD_ID_6'
                 },      
@@ -195,7 +195,7 @@ class OrderContextPL(ParentContext):
                 'opt_id': 'ID_PAY_SYSTEM_ID_14',
                 'is_default': True,
                 'compatible_with': {
-                    'delivery':['dostawa kurierem', 'odbiór osobisty w sklepie Levenhuk', 'inpost paczkomaty'],
+                    'delivery':['dostawa kurierem', 'odbiór osobisty w sklepie levenhuk', 'inpost paczkomaty'],
                     'price_class': [0, 1]
                 }
             },
@@ -205,7 +205,7 @@ class OrderContextPL(ParentContext):
                 'opt_id': "ID_PAY_SYSTEM_ID_25",
                 'is_cash': True,
                 'compatible_with': {
-                    'delivery':['dostawa kurierem', 'odbiór osobisty w sklepie Levenhuk', 'inpost paczkomaty'],
+                    'delivery':['dostawa kurierem', 'odbiór osobisty w sklepie levenhuk', 'inpost paczkomaty'],
                     'price_class': [0, 1]
                 }
             },
@@ -214,7 +214,7 @@ class OrderContextPL(ParentContext):
                 'en_name': 'paypal',
                 'opt_id': 'ID_PAY_SYSTEM_ID_12',
                 'compatible_with': {
-                    'delivery':['dostawa kurierem', 'odbiór osobisty w sklepie Levenhuk', 'inpost paczkomaty'],
+                    'delivery':['dostawa kurierem', 'odbiór osobisty w sklepie levenhuk', 'inpost paczkomaty'],
                     'price_class': [0, 1]
                 }
             }
@@ -425,7 +425,7 @@ def is_item_available(order):
         search_for_sku(sku)
         price_text = driver.find_element(By.CLASS_NAME, "product-card__price").text.lower()
         # Check language file for the translations: out of stock, discontinued, coming soon
-        unavailable_indicators = ['vyprodáno', 'už není v nabídce', 'již brzy na skladě']
+        unavailable_indicators = ['niedostępne', 'wycofano ze sprzedaży', 'dostępne wkrótce']
         if any(indicator in price_text for indicator in unavailable_indicators):
             return False, price_text
         else:

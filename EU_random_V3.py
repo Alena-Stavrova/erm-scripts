@@ -167,8 +167,8 @@ class OrderContextEU(ParentContext):
 
         self.delivery_options = [
                 {            
-                    'local_name': 'Courier delivery',
-                    'en_name': 'Courier delivery',
+                    'local_name': 'courier',
+                    'en_name': 'courier',
                     'opt_id': 'ID_SHIPPING_METHOD_ID_2',
                     'is_default': True
                     }
@@ -176,30 +176,30 @@ class OrderContextEU(ParentContext):
 
         self.payment_options = [
                 {
-                    'local_name': 'Bank transfer',
-                    'en_name': 'Bank transfer',
+                    'local_name': 'bank transfer',
+                    'en_name': 'bank transfer',
                     'opt_id': "ID_PAY_SYSTEM_ID_2",
                     'is_default': True,
                     'compatible_with': {
-                        'delivery': 'Courier delivery',
+                        'delivery': 'courier',
                         'price_class': [1]
                     }    
                 },
                 {
-                    'local_name': 'Credit\\Debit Card',
-                    'en_name': 'Credit\\Debit Card',
+                    'local_name': 'credit/debit card',
+                    'en_name': 'credit/debit card',
                     'opt_id': 'ID_PAY_SYSTEM_ID_43',
                     'compatible_with': {
-                        'delivery': 'Courier delivery',
+                        'delivery': 'courier',
                         'price_class': [1]
                     }
                 },
                 {
-                    'local_name': 'PayPal',
-                    'en_name': 'PayPal',
+                    'local_name': 'paypal',
+                    'en_name': 'paypal',
                     'opt_id': 'ID_PAY_SYSTEM_ID_5',
                     'compatible_with': {
-                        'delivery': 'Courier delivery',
+                        'delivery': 'courier',
                         'price_class': [1]
                     }
                 },
@@ -210,7 +210,7 @@ class OrderContextEU(ParentContext):
                     'is_default': True,
                     'is_virtual': True,    # Virtual = no UI element, but should be tracked for summary
                     'compatible_with': {
-                        'delivery': 'Courier delivery',
+                        'delivery': 'courier',
                         'price_class': [0]
                     }
                 }   
@@ -383,7 +383,7 @@ def is_item_available(order):
         search_for_sku(sku)
         price_text = driver.find_element(By.CLASS_NAME, "product-card__price").text.lower()
         # Check language file for the translations: out of stock, discontinued, coming soon
-        unavailable_indicators = ["nicht auf lager", "nicht mehr erhältlich", "demnächst verfügbar"]
+        unavailable_indicators = ['out of stock', 'discontinued', 'coming soon']
         if any(indicator in price_text for indicator in unavailable_indicators):
             return False, price_text
         else:

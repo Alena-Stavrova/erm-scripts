@@ -179,8 +179,8 @@ class OrderContextES(ParentContext):
 
         self.payment_options = [
                 {
-                    'local_name': 'Tarjeta de crédito/débito',
-                    'en_name': 'Credit/debit card',
+                    'local_name': 'tarjeta de crédito/débito',
+                    'en_name': 'credit/debit card',
                     'opt_id': 'ID_PAY_SYSTEM_ID_38',
                     'is_default': True,
                     'compatible_with': {
@@ -189,8 +189,8 @@ class OrderContextES(ParentContext):
                     }    
                 },
                 {
-                    'local_name': 'Transferencia bancaria',
-                    'en_name': 'Bank transfer',
+                    'local_name': 'transferencia bancaria',
+                    'en_name': 'bank transfer',
                     'opt_id': 'ID_PAY_SYSTEM_ID_37',
                     'compatible_with': {
                         'delivery': 'entrega por mensajería',
@@ -198,8 +198,8 @@ class OrderContextES(ParentContext):
                     }
                 },
                 {
-                    'local_name': 'Bizum',
-                    'en_name': 'Bizum',
+                    'local_name': 'bizum',
+                    'en_name': 'bizum',
                     'opt_id': 'ID_PAY_SYSTEM_ID_41',
                     'compatible_with': {
                         'delivery': 'entrega por mensajería',
@@ -207,8 +207,8 @@ class OrderContextES(ParentContext):
                     }
                 },
                 {
-                    'local_name': 'Pago contra reembolso',
-                    'en_name': 'Cash on delivery',
+                    'local_name': 'pago contra reembolso',
+                    'en_name': 'cash on delivery',
                     'opt_id': 'ID_PAY_SYSTEM_ID_36',
                     'is_cash': True,
                     'compatible_with': {
@@ -217,8 +217,8 @@ class OrderContextES(ParentContext):
                     }
                 },
                 {
-                    'local_name': 'Paygold',
-                    'en_name': 'Paygold',
+                    'local_name': 'paygold',
+                    'en_name': 'paygold',
                     'opt_id': 'ID_PAY_SYSTEM_ID_42',
                     'compatible_with': {
                         'delivery': 'entrega por mensajería',
@@ -226,8 +226,8 @@ class OrderContextES(ParentContext):
                     }
                 },
                 {
-                    'local_name': 'PayPal',   
-                    'en_name': 'PayPal',
+                    'local_name': 'paypal',   
+                    'en_name': 'paypal',
                     'opt_id': 'ID_PAY_SYSTEM_ID_35',
                     'compatible_with': {
                         'delivery': 'entrega por mensajería',
@@ -445,7 +445,7 @@ def is_item_available(order):
         search_for_sku(sku)
         price_text = driver.find_element(By.CLASS_NAME, "product-card__price").text.lower()
         # Check language file for the translations: out of stock, discontinued, coming soon
-        unavailable_indicators = ["nicht auf lager", "nicht mehr erhältlich", "demnächst verfügbar"]
+        unavailable_indicators = ['sin existencias', 'descatalogado', 'próximamente']
         if any(indicator in price_text for indicator in unavailable_indicators):
             return False, price_text
         else:
