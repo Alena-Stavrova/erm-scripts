@@ -299,7 +299,7 @@ class OrderContextHU(ParentContext):
 # Choose random sku, return a string and int price class
 def choose_sku(order):
     # For IT price classes are only relevant for shipping costs
-    price_classes_to_try = [0, 1]
+    price_classes_to_try = [0, 1] 
     random.shuffle(price_classes_to_try)  # Try in random order
 
     for price_class in price_classes_to_try:
@@ -942,6 +942,39 @@ def verify_order_fee(order):
     try:
         print("Verifying order fees...")
         time.sleep(2)
+
+        # Get actual fee from page
+        fee_element = wait.until(
+            EC.presence_of_element_located((By.ID, "bx-cost-shipping"))
+        )    
+        actual_fee = fee_element.text
+        print(f"Actual fee on page: '{actual_fee}'")
+
+        # Get expected fee from order context
+        expected_display, _ = order.get_expected_total_fee()
+        order.summary['expected_fee'] = expected_display
+        
+        if expected_display is None:
+            print(f"✗ Can't determine expected fee")
+            return False, actual_fee
+        
+        if actual_fee == expected_display:
+            print(f"✓ Fee verified: {actual_fee}")
+            return True, actual_fee
+        else:
+            print(f"✗ Fee mismatch: Expected '{expected_display}', got '{actual_fee}'")
+            return False, actual_fee
+            
+    except Exception as e:
+        print(f"✗ Error verifying order fees: {str(e)}")
+        take_screenshot("fee_verification_error")
+        return False, "Error"
+
+"""
+def verify_order_fee(order):
+    try:
+        print("Verifying order fees...")
+        time.sleep(2)
         
         # Get actual fee from page
         fee_element = wait.until(
@@ -977,6 +1010,7 @@ def verify_order_fee(order):
         print(f"✗ Error verifying order fees: {str(e)}")
         take_screenshot("fee_verification_error")
         return False, "Error"
+"""
 
 def place_order():
     # Finalize the order by clicking the checkout button on the order form
