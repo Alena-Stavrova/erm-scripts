@@ -184,6 +184,15 @@ class OrderContextCZ(ParentContext):
                 }
             ]
         
+        self.delivery_options = [
+            {
+    
+                'local_name': 'ppl parcel box',
+                'en_name': 'ppl parcel box',
+                'opt_id': 'ID_SHIPPING_METHOD_ID_99'
+                }
+            ]
+        
         self.payment_options = [
             {
                 'local_name': 'dobírka',
@@ -648,7 +657,8 @@ def select_ppl(order):
         take_screenshot("ppl_pickup_error")
         return False, 'ppl parcel box'
 
-# For testing PPL pickup
+# For testing PPL pickup (comment out other delivery options)
+
 """
 def select_delivery_option(order):
     try:
@@ -668,7 +678,7 @@ def select_delivery_option(order):
         
         # Only interact with UI if not default
     
-        if selected_name == 'PPL parcel box':
+        if selected_name == 'ppl parcel box':
             succcess, name = select_ppl(order)
             return succcess, name
         else:
@@ -679,7 +689,7 @@ def select_delivery_option(order):
         print(f"✗ Error in payment selection process: {str(e)}")
         take_screenshot("payment_option_error")
         return False, "Error"
-        """
+"""
 
 def select_delivery_option(order):
     try:
