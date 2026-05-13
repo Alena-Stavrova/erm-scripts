@@ -60,6 +60,7 @@ class ParentContext:
     def __init__(self):
         self.user_email = None
         self.user_phone = None
+        self.currency = None
 
         self.sku = {
             'selected': None,
@@ -156,6 +157,7 @@ class ParentContext:
 class OrderContextPL(ParentContext):
     def __init__(self):
         super().__init__()
+        self.currency = 'zł'
         
         self.sku_lists = {
             'price_classes': {
@@ -185,7 +187,7 @@ class OrderContextPL(ParentContext):
                 'opt_id': 'ID_SHIPPING_METHOD_ID_7'
                 }
             ]
-        
+           
         
         
         self.payment_options = [
@@ -289,7 +291,7 @@ class OrderContextPL(ParentContext):
         if total_amount == 0:
             display = 'Darmowa dostawa'
         else:
-            display = f'{total_amount} zł'
+            display = f'{total_amount} {self.currency}'
         
         return display, total_amount
 
@@ -783,13 +785,34 @@ def select_delivery_option(order):
                     # Click the label
                     delivery_label.click()
                     time.sleep(1)
-                
-                    print(f"✓ Option clicked: {selected_name}")
-                    return True, selected_name
+
+                    # On PL ERM must confirm the shop
+                    try:
+                        pickup_point = driver.find_element(By.CSS_SELECTOR, ".delivery-map__list .delivery-map__item")
+        
+                        if not pickup_point:
+                            print("✗ No pickup points found.")
+                            return False, selected_name
+        
+                        # Look for the confirmation button INSIDE the chosen pickup point
+                        confirm_button = pickup_point.find_element(By.CSS_SELECTOR, "button[data-set-shop]")
+        
+                        driver.execute_script("arguments[0].scrollIntoView({block: 'center', behavior: 'smooth'});", confirm_button)
+                        time.sleep(0.5)
+                        confirm_button.click()
+                        print("Shop pickup confirmed by clicking button inside list item.")
+                        time.sleep(1)
+        
+                        return True, selected_name
+        
+                    except Exception as e:
+                        print(f"✗ Failed to confirm shop pickup: {str(e)}")
+                        take_screenshot("shop_pickup_confirmation_error")
+                        return False, selected_name
                 
                 except Exception as e:
                     print(f"✗ Failed to click delivery option {selected_name}: {str(e)}")
-                    return False, selected_name
+                    return False
         else:
             print(f"Using default delivery option ({default_name}), no action needed")
             return True, selected_name
@@ -874,8 +897,8 @@ def select_payment_option(order):
     except Exception as e:
         print(f"✗ Error in payment selection process: {str(e)}")
         take_screenshot("payment_option_error")
-        return False, "Error"       
-
+        return False, "Error"
+    
 def fill_order_form(user_email, test_phone):
     try:
         ship_to = choose_address() #is a dictionary
@@ -1078,22 +1101,22 @@ def verify_order_fee(order):
         fee_element = wait.until(
             EC.presence_of_element_located((By.ID, "bx-cost-shipping"))
         )    
-        actual_fee = fee_element.text
-        print(f"Actual fee on page: '{actual_fee}'")
+        actual_fee_text = fee_element.text
+        print(f"Actual fee on page: '{actual_fee_text}'")
 
-        # Get expected fee from order context
         expected_display, expected_amount = order.get_expected_total_fee()
         order.summary['expected_fee'] = expected_display
+
+        if actual_fee_text == 'Darmowa dostawa':
+            actual_fee = 0
+        else:
+            actual_fee = int(extract_price(actual_fee_text))
         
-        if expected_display is None:
-            print(f"✗ Can't determine expected fee")
-            return False, actual_fee
-        
-        if actual_fee == expected_display:
-            print(f"✓ Fee verified: {actual_fee}")
+        if actual_fee == expected_amount:
+            print(f"✓ Fee verified: {actual_fee} {order.currency}")
             return True, actual_fee
         else:
-            print(f"✗ Fee mismatch: Expected '{expected_display}', got '{actual_fee}'")
+            print(f"✗ Fee mismatch: Expected '{expected_amount} {order.currency}', got '{actual_fee} {order.currency}'")
             return False, actual_fee
             
     except Exception as e:
@@ -1217,7 +1240,7 @@ def main_pl(email, phone):
                         basket_price = get_total_price_basket(order)
 
                         if basket_price is not None:
-                            print(f"Cart total price: {basket_price}")
+                            print(f"Cart total price: {basket_price} {order.currency}")
                                 
                             step_counter.print_step("Proceeding to checkout")
                             take_screenshot("basket_before_checkout")
@@ -1285,13 +1308,13 @@ def main_pl(email, phone):
         else:
             print("Order number: order wasn't placed")
         print(f"Chosen SKU: {order.sku['selected']}")
-        print(f"Item price: {order.summary['basket_price']} zł")
+        print(f"Item price: {order.summary['basket_price']} {order.currency}")
         print(f"Delivery option: {order.summary['delivery_option']}")
         print(f"Payment option: {order.summary['payment_option']}")
         
         # Shipping fees match check
         if fee_success:
-            print(f"Order fee (shipping + payment): ✓ As expected, {order.summary['order_fee']}")
+            print(f"Order fee (shipping + payment): ✓ As expected, {order.summary['order_fee']} {order.currency}")
         else:
             print(f"✗ Shipping fees don't match: expected {order.summary['expected_fee']}, got {order.summary['order_fee']}")
         
