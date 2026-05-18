@@ -313,9 +313,10 @@ def extract_price(price_text):
     except ValueError:
         return None
     
-def close_cookie_popup(): 
+def close_cookie_popup():
+    # Close the cookie consent popup if present
     try:
-        accept_button = WebDriverWait(driver, 5).until(
+        accept_button = WebDriverWait(driver, 3).until(
                     EC.element_to_be_clickable((By.CSS_SELECTOR, ".cky-btn.cky-btn-accept"))
         )
         accept_button.click()
@@ -324,8 +325,7 @@ def close_cookie_popup():
         return True    
      
     except Exception as e:
-        print(f"Error handling cookie popup: {str(e)}")
-        return False
+        return False  # Popup already closed or not present    
 
 def search_for_sku(sku):
     try:
