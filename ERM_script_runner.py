@@ -6,6 +6,7 @@ import EU_random_V3 as eu
 import HU_random_V3 as hu
 import IT_random_V3 as it
 import PL_random_V3 as pl
+import RU_random_V3 as ru
 
 import random
 
@@ -18,9 +19,10 @@ script_modules = {
     'HU': hu,
     'IT': it,
     'PL': pl,
+    'RU': ru
     }
 
-full_script_list = ['BG', 'CZ', 'DE', 'ES', 'EU', 'HU', 'IT', 'PL']
+full_script_list = ['BG', 'CZ', 'DE', 'ES', 'EU', 'HU', 'IT', 'PL', 'RU']
 
 # ['BG', 'CZ', 'DE', 'ES', 'EU', 'HU', 'IT', 'PL']
 # ['HU', 'BG']
@@ -31,13 +33,13 @@ def list_substraction(list_1, list_2):
     return new_list
 
 print("Type countries space-separated, like 'ES EU PL'")
-print("Or type '8' to run ALL scripts") # For 8 ERM scripts
-print("Or type '8-HU DE' to exclude 1+ script (HU DE) and run all the others")
+print("Or type '9' to run ALL scripts") # For 9 ERM scripts, incl. RU
+print("Or type '9-HU DE' to exclude 1+ script (HU DE) and run all the others")
 scripts_string = input("Enter your choice: ")
-if scripts_string == "8":
-    scripts_to_run = ['BG', 'CZ', 'DE', 'ES', 'EU', 'HU', 'IT', 'PL']
-elif "8-" in scripts_string:
-    # Remove 8 and minus sign
+if scripts_string == "9":
+    scripts_to_run = ['BG', 'CZ', 'DE', 'ES', 'EU', 'HU', 'IT', 'PL', 'RU']
+elif "9-" in scripts_string:
+    # Remove 9 and minus sign
     removed_scripts = scripts_string[2:].upper().split()
     scripts_to_run = list_substraction(full_script_list, removed_scripts)
     print('Running: ' + ' '.join(scripts_to_run))
