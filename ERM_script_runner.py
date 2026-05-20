@@ -37,7 +37,7 @@ print("Or type '9' to run ALL scripts") # For 9 ERM scripts, incl. RU
 print("Or type '9-HU DE' to exclude 1+ script (HU DE) and run all the others")
 scripts_string = input("Enter your choice: ")
 if scripts_string == "9":
-    scripts_to_run = ['BG', 'CZ', 'DE', 'ES', 'EU', 'HU', 'IT', 'PL', 'RU']
+    scripts_to_run = full_script_list
 elif "9-" in scripts_string:
     # Remove 9 and minus sign
     removed_scripts = scripts_string[2:].upper().split()

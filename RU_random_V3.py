@@ -308,18 +308,18 @@ class OrderContextRU(ParentContext):
         }
     
     
-def get_expected_shipping_fee(self):
-    if not self.selected_delivery:
-        return None, None
+    def get_expected_shipping_fee(self):
+        if not self.selected_delivery:
+            return None, None
     
-    # Third-party deliveries - no reference price, can't verify, skip
-    if self.selected_delivery.get('is_third_party'):
-        return None, None
+        # Third-party deliveries - no reference price, can't verify, skip
+        if self.selected_delivery.get('is_third_party'):
+            return None, None
     
-    # Our own deliveries with predetermined costs
-    delivery_name = self.selected_delivery['en_name']
-    fee_data = self.fees['shipping'].get(delivery_name)
-    return fee_data['display'], fee_data['amount'] if fee_data else (None, None)
+        # Our own deliveries with predetermined costs
+        delivery_name = self.selected_delivery['en_name']
+        fee_data = self.fees['shipping'].get(delivery_name)
+        return fee_data['display'], fee_data['amount'] if fee_data else (None, None)
 
 
 # Choose random sku, return a string and int price class
@@ -366,6 +366,7 @@ def choose_address(order):
     ] 
     }
     chosen_region = random.choice(order.regions)
+    order.selected_region = chosen_region
     region_lib = shipping_addresses[chosen_region]
 
     address = random.choice(region_lib)
@@ -629,7 +630,7 @@ def proceed_to_checkout():
             return False
         
     except Exception as e:
-        print(f"Failed to proceed to checkout: {str(e)}")
+        print(f"✗ Failed to proceed to checkout: {str(e)}")
         take_screenshot("checkout_error")
         return False
 
@@ -709,7 +710,8 @@ def _select_pickup_location(order):
     
 def select_delivery_option(order):
     try:
-        delivery_options = order.delivery_options
+        region = order.selected_region
+        delivery_options = [d for d in order.delivery_options if region in d['compatible_with']['region']]
         selected = random.choice(delivery_options)
         order.selected_delivery = selected
 
@@ -1233,6 +1235,7 @@ def main_ru(email, phone):
             print("Order number: order wasn't placed")
         print(f"Chosen SKU: {order.sku['selected']}")
         print(f"Item price: {order.summary['basket_price']} {order.currency}")
+        print(f'Chosen region: {order.selected_region}')
         print(f"Delivery option: {order.summary['delivery_option']}")
         print(f"Payment option: {order.summary['payment_option']}")
 
