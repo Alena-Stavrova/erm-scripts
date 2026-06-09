@@ -656,6 +656,12 @@ def select_delivery_option(order):
 def select_payment_option(order):
     try:
         print("Selecting payment option...")
+        # Wait for payment options to stabilize after delivery change
+        WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.ID, "bx-payment-method"))
+        )
+        time.sleep(0.5)  # Small buffer for JS to finish rendering
+        
         available_options = order.get_available_payment_options()
         
         if not available_options:
