@@ -889,7 +889,13 @@ def fill_order_form(user_email, test_phone):
         
         # Address field
         try:
-            address_field = WebDriverWait(driver, 5).until(
+            # Wait for delivery section to stabilize (express option may be loading)
+            WebDriverWait(driver, 10).until(
+                EC.presence_of_element_located((By.ID, "bx-delivery-method"))
+            )
+            time.sleep(0.5)
+    
+            address_field = WebDriverWait(driver, 10).until(
                 EC.element_to_be_clickable((By.ID, "bx-input-order-ADDRESS_SHIP"))
             )
             
@@ -1055,6 +1061,8 @@ def main_it(email, phone):
         test_phone = phone
         
         order = OrderContextIT()
+        order_result = False
+        fee_success = False
 
         print("\nLaunching browser...")
         driver = create_optimized_driver()
