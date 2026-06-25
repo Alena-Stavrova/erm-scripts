@@ -181,7 +181,13 @@ class OrderContextCZ(ParentContext):
                 'local_name': 'doručení kurýrem',
                 'en_name': 'courier',
                 'opt_id': 'ID_SHIPPING_METHOD_ID_3'
-                }
+                },
+            {
+                'local_name': 'expresní doručení',
+                'en_name': 'express courier',
+                'opt_id': 'ID_SHIPPING_METHOD_ID_102'
+                },
+
             ]
         
         self.payment_options = [
@@ -201,7 +207,7 @@ class OrderContextCZ(ParentContext):
                 'en_name': 'credit card',
                 'opt_id': "ID_PAY_SYSTEM_ID_44",
                 'compatible_with': {
-                    'delivery':['vyzvednutí', 'ppl parcel box', 'doručení kurýrem'],
+                    'delivery':['vyzvednutí', 'ppl parcel box', 'doručení kurýrem', 'expresní doručení'],
                     'price_class': [0, 1]
                 }
             },
@@ -210,7 +216,7 @@ class OrderContextCZ(ParentContext):
                 'en_name': 'paypal',
                 'opt_id': 'ID_PAY_SYSTEM_ID_6',
                 'compatible_with': {
-                    'delivery':['vyzvednutí', 'ppl parcel box', 'doručení kurýrem'],
+                    'delivery':['vyzvednutí', 'ppl parcel box', 'doručení kurýrem', 'expresní doručení'],
                     'price_class': [0, 1]
                 }
             }
