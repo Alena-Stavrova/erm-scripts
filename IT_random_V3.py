@@ -190,7 +190,7 @@ class OrderContextIT(ParentContext):
             {
                 'local_name': 'consegna espressa',
                 'en_name': 'express',
-                'opt_id': 'ID_SHIPPING_METHOD_ID_101'
+                'opt_id': 'ID_SHIPPING_METHOD_ID_103'
                 }
             ]
 
@@ -285,6 +285,8 @@ class OrderContextIT(ParentContext):
         if ship_display is None and ship_amount is None:
             return None, None  # Express/third-party — no reference
         
+        pay_display, pay_amount = self.get_expected_payment_fee()
+
         ship_amount = ship_amount or 0
         pay_amount = pay_amount or 0
         total_amount = ship_amount + pay_amount
@@ -629,32 +631,45 @@ def select_delivery_option(order):
         default = order.get_default_delivery()
         default_name = default['local_name'] if default else None
         
-        # Only interact with UI if not default
         if selected_name != default_name:
             try:
-                # Find and click the delivery option label
-                delivery_label = wait.until(
-                    EC.element_to_be_clickable((By.CSS_SELECTOR, 
-                        f"label[for='{selected_id}']"))
-                )
-                print("Found delivery label, attempting to click...")
-                
-                # Scroll to the label
-                driver.execute_script(
-                    "arguments[0].scrollIntoView({block: 'center', behavior: 'smooth'});", 
-                    delivery_label
-                )
-                time.sleep(0.5)
-                
-                # Click the label
-                delivery_label.click()
+                # For express delivery, wait extra time for API data to load
+                if 'express' in selected_name.lower():
+                    print("Express delivery selected — waiting for API data to load...")
+                    time.sleep(3)  # Extra buffer for third-party API
+        
+                try:
+                    delivery_label = wait.until(
+                        EC.element_to_be_clickable((By.CSS_SELECTOR, 
+                            f"label[for='{selected_id}']"))
+                    )
+                    print("Found delivery label, attempting to click...")
+    
+                    driver.execute_script(
+                        "arguments[0].scrollIntoView({block: 'center', behavior: 'instant'});", 
+                        delivery_label
+                    )
+                    time.sleep(0.3)
+                    delivery_label.click()
+
+                except:
+                    # Fallback: click the radio input directly via JavaScript
+                    print("Label not clickable, using JS click on radio input...")
+                    driver.execute_script(
+                        f"document.querySelector('#{selected_id}').click();"
+                    )
+                    # Also trigger change event in case the page listens for it
+                    driver.execute_script(
+                        f"document.querySelector('#{selected_id}').dispatchEvent(new Event('change', {{bubbles: true}}));"
+                        )
+
                 time.sleep(1)
 
                 # Wait for payment section to stabilize after delivery change
                 WebDriverWait(driver, 10).until(
-                    EC.presence_of_element_located((By.ID, "bx-payment-method"))
+                    EC.visibility_of_element_located((By.CSS_SELECTOR, "#bx-payment-method label"))
                 )
-                time.sleep(0.5)
+                time.sleep(1.5)
                 
                 print(f"✓ Option clicked: {selected_name}")
                 return True, selected_name
@@ -929,6 +944,19 @@ def fill_order_form(user_email, test_phone):
             postal_code_field.clear()
             postal_code_field.send_keys(ship_to['postal_code'])
             print("Postal code field filled")
+
+            # Wait for delivery/payment section to fully re-render after address is complete
+            # (Express delivery option and updated payment list may be loading via API)
+            print("Waiting for delivery options to stabilize...")
+            WebDriverWait(driver, 15).until(
+                EC.presence_of_element_located((By.ID, "bx-delivery-method"))
+            )
+            # Wait for at least one payment label to be visible (section fully rebuilt)
+            WebDriverWait(driver, 10).until(
+                EC.visibility_of_element_located((By.CSS_SELECTOR, "#bx-payment-method label"))
+            )
+            time.sleep(0.5)
+            print("Delivery/payment section stabilized")
             
         except Exception as e:
             print(f"✗ Error with postal code field: {str(e)}")
