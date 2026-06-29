@@ -236,7 +236,6 @@ class OrderContextIT(ParentContext):
         ]
 
         self.currency = '€'
-        self.displays_cents = True
         self.free_shipping_phrase = 'Spedizione gratuita'
 
         self.fees = {
@@ -294,7 +293,7 @@ class OrderContextIT(ParentContext):
         if total_amount == 0:
             display = self.free_shipping_phrase
         else:
-            display = f'€{total_amount}'
+            display = f'{total_amount} {self.currency}'
     
         return display, total_amount
     
@@ -345,8 +344,8 @@ def choose_address():
         'postal_code': '90127'
     }
 ]
-    address = shipping_addresses[random.randint(0,2)] 
-    return(address) #returns a dictionary
+    address = random.choice(shipping_addresses) 
+    return address #returns a dictionary
 
 def extract_price(price_text):
     # Extract numeric price from text
@@ -622,7 +621,6 @@ def select_delivery_option(order):
 
         # Update order context
         order.selected_delivery = selected
-
         selected_name = selected['local_name']
         selected_id = selected['opt_id']
         print(f"Selected: {selected_name}")
@@ -633,11 +631,6 @@ def select_delivery_option(order):
         
         if selected_name != default_name:
             try:
-                # For express delivery, wait extra time for API data to load
-                if 'express' in selected_name.lower():
-                    print("Express delivery selected — waiting for API data to load...")
-                    time.sleep(3)  # Extra buffer for third-party API
-        
                 try:
                     delivery_label = wait.until(
                         EC.element_to_be_clickable((By.CSS_SELECTOR, 
