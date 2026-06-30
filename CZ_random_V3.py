@@ -171,6 +171,7 @@ class ParentContext:
 class OrderContextCZ(ParentContext):
     def __init__(self):
         super().__init__()
+    
         
         self.sku_lists = {
             'price_classes': {
@@ -201,7 +202,7 @@ class OrderContextCZ(ParentContext):
                 'local_name': 'expresní doručení',
                 'en_name': 'express courier',
                 'opt_id': 'ID_SHIPPING_METHOD_ID_102'
-                },
+                }
 
             ]
         
