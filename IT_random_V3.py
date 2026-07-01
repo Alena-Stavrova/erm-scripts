@@ -293,7 +293,8 @@ class OrderContextIT(ParentContext):
         if total_amount == 0:
             display = self.free_shipping_phrase
         else:
-            display = f'{total_amount} {self.currency}'
+            # Different format than IT LVH
+            display = f'{self.currency}{total_amount}'
     
         return display, total_amount
     
@@ -614,6 +615,43 @@ def proceed_to_checkout():
         take_screenshot("checkout_error")
         return False
 
+def _wait_for_payment_options(order):
+    # Helper function that verifies all the payment buttons are interactable after express button appeared
+    
+    # First, wait for the express delivery option to appear 
+    # This is the last element to load via third-party API
+    try:
+        WebDriverWait(driver, 15).until(
+            EC.presence_of_element_located((By.CSS_SELECTOR, 
+                "label[for='ID_SHIPPING_METHOD_ID_11'], label[for='ID_SHIPPING_METHOD_ID_103']"))
+        )
+        print("Express delivery option loaded")
+        time.sleep(1)  # Extra buffer for the page to finish rebuilding after express arrives
+    except:
+        print("No express delivery option found (or already loaded)")
+
+    compatible_options = order.get_available_payment_options()
+    
+    if not compatible_options:
+        print("✗ No compatible payment options to wait for")
+        return True
+    
+    expected_ids = [opt['opt_id'] for opt in compatible_options]
+    print(f"Waiting for {len(expected_ids)} payment options to be clickable...")
+
+    for opt_id in expected_ids:
+        try:
+            WebDriverWait(driver, 10).until(
+                EC.element_to_be_clickable((By.CSS_SELECTOR, f"label[for='{opt_id}']"))
+            )
+        except:
+            print(f"✗ Payment option {opt_id} did not become clickable")
+            return False
+        
+    time.sleep(0.3)  # Small buffer after all are ready
+    print("✓ All payment options clickable")
+    return True 
+
 def select_delivery_option(order):
     try:
         delivery_options = order.delivery_options
@@ -648,6 +686,15 @@ def select_delivery_option(order):
                 except:
                     # Fallback: click the radio input directly via JavaScript
                     print("Label not clickable, using JS click on radio input...")
+                    try:
+                        WebDriverWait(driver, 10).until(
+                            EC.presence_of_element_located((By.CSS_SELECTOR, f"#{selected_id}"))
+                        )
+                        time.sleep(0.5)
+                    except:
+                        print(f"✗ Radio input #{selected_id} never appeared")
+                        return False, selected_name
+                
                     driver.execute_script(
                         f"document.querySelector('#{selected_id}').click();"
                     )
@@ -657,12 +704,8 @@ def select_delivery_option(order):
                         )
 
                 time.sleep(1)
-
-                # Wait for payment section to stabilize after delivery change
-                WebDriverWait(driver, 10).until(
-                    EC.visibility_of_element_located((By.CSS_SELECTOR, "#bx-payment-method label"))
-                )
-                time.sleep(1.5)
+                if not _wait_for_payment_options(order):
+                    print("✗ Payment options not fully ready, but continuing...")
                 
                 print(f"✓ Option clicked: {selected_name}")
                 return True, selected_name
@@ -672,6 +715,8 @@ def select_delivery_option(order):
                 return False, selected_name
         else:
             print(f"Using default delivery option ({default_name}), no action needed")
+            if not _wait_for_payment_options(order):
+                print("✗ Payment options not fully ready, but continuing...")
             return True, selected_name
     
     except Exception as e:
@@ -736,8 +781,7 @@ def select_payment_option(order):
                 )
                 time.sleep(0.5)
                 payment_label.click()
-                time.sleep(1)
-                
+                time.sleep(1)            
                 print(f"✓ Successfully selected {selected_name}")
                 return True, selected_name
             
@@ -969,7 +1013,7 @@ def fill_order_form(user_email, test_phone):
 
 def verify_order_fee(order):
     try:
-        print("Verifying shipping fees...")
+        print("Verifying order fees...")
         time.sleep(2)
         
         # Get actual fee from page
