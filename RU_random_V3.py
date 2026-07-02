@@ -876,11 +876,21 @@ def fill_order_form(user_email, test_phone, order):
             phone_field.send_keys(test_phone)
             print("Phone number entered")
     
+            try:
+                WebDriverWait(driver, 10).until(
+                    EC.invisibility_of_element_located((By.CSS_SELECTOR, "#CART-SIDEBAR-TARGET.loader"))
+                )
+                print("Loader disappeared")
+                time.sleep(0.3)
+            except:
+                pass
+
             # Click "Отправить смс" button
             sms_button = WebDriverWait(driver, 5).until(
                 EC.element_to_be_clickable((By.CSS_SELECTOR, "button[data-sms-submit='send']"))
-            )
+                )
             sms_button.click()
+
             time.sleep(0.5)
             print("SMS button clicked, phone field filled")
     
