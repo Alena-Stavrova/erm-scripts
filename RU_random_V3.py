@@ -1251,7 +1251,8 @@ def main_ru(email, phone):
 
 
         if fee_success:
-            if order.selected_delivery.get('is_third_party') or order.selected_payment.get('is_third_party'):
+            # 3rd-party payments aren't mentioned bc no 3rd-party payment fees on 4glaza
+            if order.selected_delivery.get('is_third_party'):
                 print(f"Order fee (shipping + payment): {order.summary['order_fee']} (third-party, no reference to verify against)")
             else:
                 print(f"Order fee (shipping + payment): ✓ As expected, {order.summary['order_fee']}")
