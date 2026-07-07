@@ -4,7 +4,8 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import StaleElementReferenceException
+from selenium.common.exceptions import ElementClickInterceptedException, StaleElementReferenceException
+from selenium.common.exceptions import TimeoutException
 import time
 import re
 import random
@@ -873,6 +874,9 @@ def select_payment_option(order):
             except StaleElementReferenceException:
                 print("Payment label went stale mid-click (page re-rendered), falling back to JS click...")
                 force_click_option(selected_id)
+            except (ElementClickInterceptedException, StaleElementReferenceException) as e:
+                print(f"Click intercepted/stale ({type(e).__name__}), falling back to JS click...")
+                force_click_option(selected_id)
             except Exception as e:
                 # Fallback: try JavaScript click if normal click fails
                 print(f"Normal click failed ({str(e)}), attempting JS click fallback...")
@@ -1194,26 +1198,24 @@ def place_order():
         return False
     
 def get_order_number():
-    # Get the order number from the URL of the confirmation page
-    # URL is like: https://cz.ermenrich.com/order/?ORDER_ID=T-ERM-CZ-4103
+    # Actively wait for the redirect to complete 
+    try:
+        WebDriverWait(driver, 15).until(EC.url_contains("ORDER_ID="))
+    except TimeoutException:
+        print(f"✗ Order number never appeared in URL (waited 15s). Current URL: {driver.current_url}")
+        take_screenshot("order_number_timeout")
+        return False
     try:
         current_url = driver.current_url
         if "ORDER_ID=" in current_url:
-            # Slicing different number of characters for test ("T-") and regular orders
-            # Will need to edit if > 99,999 orders
             if "T-" in current_url:
                 order_num = current_url[-13:]
             else:
                 order_num = current_url[-11:]
             print(f"✓ Order confirmed! Order number: {order_num}")
-            return order_num
-                
-        else:
-            print(f"✗ Order number is not in current url")
-            return False
-        
+            return order_num      
     except Exception as e:
-        print(f"✗ Error in final order submission: {str(e)}")
+        print(f"✗ Error reading order number: {str(e)}")
         take_screenshot("final_order_error")
         return False
 
