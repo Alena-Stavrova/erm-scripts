@@ -871,16 +871,12 @@ def select_payment_option(order):
                 payment_label.click()
                 time.sleep(1)
 
-            except StaleElementReferenceException:
-                print("Payment label went stale mid-click (page re-rendered), falling back to JS click...")
-                force_click_option(selected_id)
             except (ElementClickInterceptedException, StaleElementReferenceException) as e:
                 print(f"Click intercepted/stale ({type(e).__name__}), falling back to JS click...")
                 force_click_option(selected_id)
             except Exception as e:
-                # Fallback: try JavaScript click if normal click fails
                 print(f"Normal click failed ({str(e)}), attempting JS click fallback...")
-                force_click_option(selected_id)
+                force_click_option(selected_id) 
 
             # Confirm the click actually stuck; the express-delivery re-render can
             # silently snap the radio back to the default right after we click it
@@ -984,6 +980,7 @@ def fill_order_form(user_email, test_phone):
         
         # Country field (a dropdown with typeahead)
         try:
+            close_cookie_popup()
             country_field = WebDriverWait(driver, 5).until(
                 EC.element_to_be_clickable((By.ID, "bx-input-order-COUNTRY_SHIPPING-ts-control"))
             )
@@ -1048,6 +1045,17 @@ def fill_order_form(user_email, test_phone):
         
         # Address field
         try:
+            # Wait for the cart sidebar loader to disappear (may reappear due to async delivery pricing)
+            try:
+                WebDriverWait(driver, 15).until(
+                    EC.invisibility_of_element_located((By.CSS_SELECTOR, "#CART-SIDEBAR-TARGET.loader"))
+                )
+                print("Loader disappeared")
+                time.sleep(0.5)
+            except:
+                print("Loader not found or already gone")
+
+        
             # Wait for delivery section to stabilize (express option may be loading)
             WebDriverWait(driver, 10).until(
                 EC.presence_of_element_located((By.ID, "bx-delivery-method"))
@@ -1314,14 +1322,45 @@ def main_it(email, phone):
                                         order.summary['payment_option'] = payment
                                     else:
                                         print("✗ Payment selection failed, but continuing with order process")
-                                  
+
                                     time.sleep(2)
+
                                     step_counter.print_step("Verifying delivery and payment fees...")
                                     fee_success, fee_display = verify_order_fee(order)
                                     if fee_success:
                                         order.summary['order_fee'] = fee_display
-                                            
+
                                     step_counter.print_step("Placing order")
+    
+                                    # Final check: re-verify payment selection right before submitting,
+                                    # in case a late re-render (e.g. fee verification) caused drift after our earlier check
+                                    final_payment_option = order.selected_payment  # default: assume no drift
+                                    final_payment_id = get_checked_option_id("ID_PAY_SYSTEM_ID_")
+
+                                    if final_payment_id and final_payment_id != order.selected_payment['opt_id']:
+                                        intended_id = order.selected_payment['opt_id']
+                                        intended_name = order.selected_payment['local_name']
+                                        print(f"✗ Payment drifted before submission: was {order.selected_payment['local_name']}, now {final_payment_option['local_name']}")
+                                        
+                                         # Try to re-establish the originally intended selection
+                                        force_click_option(intended_id)
+                                        wait_until_selection_stable("ID_PAY_SYSTEM_ID_", intended_id)
+
+                                        # Re-read ground truth after the recovery attempt
+                                        final_payment_id = get_checked_option_id("ID_PAY_SYSTEM_ID_")
+                                        final_payment_option = next(
+                                            (opt for opt in order.payment_options if opt['opt_id'] == final_payment_id),
+                                            order.selected_payment
+                                        )
+
+                                        if final_payment_id == intended_id:
+                                            print(f"✓ Re-selected {intended_name} successfully")
+                                        else:
+                                            print(f"✗ Could not restore {intended_name}; proceeding with {final_payment_option['local_name']}")
+                                        
+                                    order.selected_payment = final_payment_option
+                                    order.summary['payment_option'] = final_payment_option['local_name']
+
                                     order_result = place_order()
 
                                     if order_result:
@@ -1373,7 +1412,8 @@ def main_it(email, phone):
         
     except Exception as e:
         print(f"\n✗ Script failed with error: {str(e)}")
-        take_screenshot("main_script_error")          
+        traceback.print_exc()
+        take_screenshot("main_script_error")     
    
     finally:
         driver.quit()

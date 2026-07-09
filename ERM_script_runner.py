@@ -9,6 +9,7 @@ import PL_random_V3 as pl
 import RU_random_V3 as ru
 
 import random
+import os
 
 script_modules = {
     'BG': bg,
@@ -66,6 +67,7 @@ for script in scripts_to_run:
     
     print(f"\n{'='*60}")
     print(f"Running {script} script with email: {current_email}")
+    print(f"--- Running {__file__}, modified {os.path.getmtime(__file__)} ---")
     print(f"{'='*60}")
     
     main_function(current_email, test_phone)
