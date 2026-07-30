@@ -788,11 +788,9 @@ def select_delivery_option(order):
 
                     # On PL ERM must confirm the shop
                     try:
-                        pickup_point = driver.find_element(By.CSS_SELECTOR, ".delivery-map__list .delivery-map__item")
-        
-                        if not pickup_point:
-                            print("✗ No pickup points found.")
-                            return False, selected_name
+                        pickup_point = WebDriverWait(driver, 10).until(
+                            EC.presence_of_element_located((By.CSS_SELECTOR, ".delivery-map__list .delivery-map__item"))
+                            )
         
                         # Look for the confirmation button INSIDE the chosen pickup point
                         confirm_button = pickup_point.find_element(By.CSS_SELECTOR, "button[data-set-shop]")
