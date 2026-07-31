@@ -1536,7 +1536,7 @@ def main_cz(email, phone):
                                         intended_name = order.selected_payment['local_name']
                                         print(f"✗ Payment drifted before submission: was {order.selected_payment['local_name']}, now {final_payment_option['local_name']}")
                                         
-                                         # Try to re-establish the originally intended selection
+                                        # Try to re-establish the originally intended selection
                                         force_click_option(intended_id)
                                         wait_until_selection_stable("ID_PAY_SYSTEM_ID_", intended_id)
 
