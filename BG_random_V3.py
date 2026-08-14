@@ -154,12 +154,14 @@ class ParentContext:
 class OrderContextBG(ParentContext):
     def __init__(self):
         super().__init__()
-    
-        self.sku_lists = {
-            'price_classes': {
-                0: [84575, 85318, 84545, 83090, 84558], # Under 200 BGN
+        self.currency = "€"
+        self.displays_cents = True
+        self.free_shipping_phrase = 'Безплатна доставка'
         
-                1: [84553, 84653, 84086, 84550, 84085]  # 200+ BGN
+        self.sku_lists = {
+            "price_classes": {
+                0: [84584, 85318, 84545, 83090, 84558],  # Under 106€
+                1: [84553, 84653, 84086, 84550, 84085],  # 106+ €
             }
         }
 
@@ -209,10 +211,10 @@ class OrderContextBG(ParentContext):
         self.fees = {
                 'shipping': {
                     'standard': {
-                        'under_200': {
+                        'under_106': {
                             'display': 'TBD'
                         },
-                        'over_200': {
+                        'over_106': {
                             'display': 'Безплатна доставка'
                         }
                     }
@@ -227,9 +229,9 @@ class OrderContextBG(ParentContext):
 
         # Only have standard delivery
         if price_class == 0:  
-            tier = 'under_200'
-        else:  # Over 70€
-            tier = 'over_200'
+            tier = 'under_106'
+        else:  
+            tier = 'over_106'
 
         return self.fees['shipping']['standard'][tier]['display'], None # Return display string only
     
@@ -238,9 +240,27 @@ class OrderContextBG(ParentContext):
         return None, None
     
     def get_expected_total_fee(self):
-        # Just return the shipping fee display string
-        ship_display, _ = self.get_expected_shipping_fee()
-        return ship_display, None
+        ship_display, ship_amount = self.get_expected_shipping_fee()
+        
+        if ship_display is None:
+            return None, None
+        
+        # Add payment fee if applicable
+        pay_display, pay_amount = self.get_expected_payment_fee()
+        total_amount = (ship_amount or 0) + (pay_amount or 0)
+        
+        # Build display string
+        # Shipping is free and payment adds nothing
+        if ship_display == self.free_shipping_phrase and (pay_amount is None or pay_amount == 0):
+            total_display = self.free_shipping_phrase
+        # TBD
+        elif ship_display and 'TBD' in str(ship_display).upper():
+            total_display = ship_display 
+        # Calculate cost in numbers 
+        else:
+            total_display = f"{self.currency}{total_amount}"
+        
+        return total_display, total_amount
    
     def update_summary(self, **kwargs):
         self.summary.update(kwargs)
@@ -316,7 +336,7 @@ def close_cookie_popup():
         time.sleep(1)
         return True    
      
-    except Exception as e:
+    except:
         return False  # Popup already closed or not present       
 
 def search_for_sku(sku):
@@ -1073,17 +1093,20 @@ def main_bg(email, phone):
         else:
             print("Order number: order wasn't placed")
         print(f"Chosen SKU: {order.sku['selected']}")
-        print(f"Item price: {order.summary['basket_price']} лв.")
+        if order.displays_cents:
+            print(f"Item price: {order.summary['basket_price']} {order.currency}")
+        else:
+            print(f"Item price: {int(order.summary['basket_price'])} {order.currency}")
         print(f"Delivery option: {order.summary['delivery_option']}")
         print(f"Payment option: {order.summary['payment_option']}")
-        
+                
         # Shipping fees match check
         if fee_success:
             print(f"Order fee (shipping + payment): ✓ As expected, {order.summary['order_fee']}")
         else:
             print(f"✗ Shipping fees don't match: expected {order.summary['expected_fee']}, got {order.summary['order_fee']}")
-        
-        
+                
+                
         print("----------END----------")
         time.sleep(10)
         

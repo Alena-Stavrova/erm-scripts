@@ -634,11 +634,125 @@ def proceed_to_checkout():
         take_screenshot("checkout_error")
         return False
 
+def _wait_for_payment_options(order):
+    # Helper function that verifies all the payment buttons are interactable after express button appeared
+
+    # First, wait for the express delivery option to appear
+    # This is the last element to load via third-party API
+    try:
+        WebDriverWait(driver, 15).until(
+            EC.presence_of_element_located(
+                (By.CSS_SELECTOR, "label[for='ID_SHIPPING_METHOD_ID_102']")
+            )
+        )
+        print("Express delivery option loaded")
+        time.sleep(
+            1
+        )  # Extra buffer for the page to finish rebuilding after express arrives
+    except:
+        print("No express delivery option found (or already loaded)")
+
+    compatible_options = order.get_available_payment_options()
+
+    if not compatible_options:
+        print("✗ No compatible payment options to wait for")
+        return True
+
+    expected_ids = [opt["opt_id"] for opt in compatible_options]
+    print(f"Waiting for {len(expected_ids)} payment options to be clickable...")
+
+    for opt_id in expected_ids:
+        try:
+            WebDriverWait(driver, 10).until(
+                EC.element_to_be_clickable((By.CSS_SELECTOR, f"label[for='{opt_id}']"))
+            )
+        except:
+            print(f"✗ Payment option {opt_id} did not become clickable")
+            return False
+
+    time.sleep(0.3)  # Small buffer after all are ready
+    print("All payment options clickable")
+    return True
+
+
+def get_checked_option_id(id_prefix):
+    # Ground-truth read of which radio input is actually checked in the DOM right now
+    # Returns the id string, or None if none are checked
+
+    script = """
+        var prefix = arguments[0];
+        var inputs = document.querySelectorAll('input[id^="' + prefix + '"]');
+        for (var i = 0; i < inputs.length; i++) {
+            if (inputs[i].checked) { return inputs[i].id; }
+        }
+        return null;
+    """
+    try:
+        return driver.execute_script(script, id_prefix)
+    except Exception:
+        return None
+
+
+def force_click_option(opt_id):
+    # Clicking the label fires the site's own click handlers, force the underlying input's checked state + change event
+    # Needed in case the label click alone gets swallowed by an in-progress re-render
+
+    try:
+        driver.execute_script(f"""
+            var label = document.querySelector('label[for="{opt_id}"]');
+            if (label) {{ label.click(); }}
+        """)
+    except Exception:
+        pass
+    try:
+        driver.execute_script(f"""
+            var input = document.getElementById('{opt_id}');
+            if (input && !input.checked) {{
+                input.checked = true;
+                input.dispatchEvent(new Event('change', {{bubbles: true}}));
+                input.dispatchEvent(new Event('click', {{bubbles: true}}));
+            }}
+        """)
+    except Exception:
+        pass
+    
+def wait_until_selection_stable(
+    id_prefix, expected_id, stable_duration=1.0, timeout=12, poll_interval=0.15
+):
+    # Poll the DOM until `expected_id` has been continuously checked for `stable_duration` seconds straight
+    # Any time the checked option drifts away from expected_id, it re-clicks expected_id and restarts the stability clock.
+    # Only moves on once things have genuinely settled, returns True if stable in time, False if it never settled (timeout).
+
+    start = time.time()
+    stable_since = None
+
+    while time.time() - start < timeout:
+        current = get_checked_option_id(id_prefix)
+
+        if current == expected_id:
+            if stable_since is None:
+                stable_since = time.time()
+            elif time.time() - stable_since >= stable_duration:
+                return True
+        else:
+            if stable_since is not None:
+                print(
+                    f"  ↳ Selection drifted from {expected_id} (now: {current}), re-clicking..."
+                )
+            stable_since = None
+            force_click_option(expected_id)
+
+        time.sleep(poll_interval)
+
+    final = get_checked_option_id(id_prefix)
+    print(f"✗ '{expected_id}' never stabilized as checked (last seen: {final})")
+    return False
+
 def _select_pickup_location(order):
     try:
         # Wait for the pickup list to appear
         WebDriverWait(driver, 10).until(
-            EC.presence_of_element_located((By.CLASS_NAME, "delivery-map__list"))
+            EC.element_to_be_clickable((By.CLASS_NAME, "delivery-map__list"))
         )
         
         # Wait for buttons to have text (list fully loaded)
@@ -725,17 +839,65 @@ def select_delivery_option(order):
             delivery_label = wait.until(
                 EC.element_to_be_clickable((By.CSS_SELECTOR, f"label[for='{selected_id}']"))
             )
+            print("Found delivery label, attempting to click...")
+
+            # Scroll to the label
             driver.execute_script(
                 "arguments[0].scrollIntoView({block: 'center', behavior: 'instant'});", 
                 delivery_label
             )
             time.sleep(0.3)
             delivery_label.click()
-            time.sleep(0.5)
-        except Exception as e:
-            print(f"✗ Failed to click delivery: {str(e)}")
-            return False, selected_name
 
+        except:
+            # Fallback: click the radio input directly via JavaScript
+            print("Label not clickable, using JS click on radio input...")
+            try:
+                WebDriverWait(driver, 10).until(
+                    EC.presence_of_element_located((By.CSS_SELECTOR, f"#{selected_id}"))
+                    )
+                time.sleep(0.5)
+            except:
+                print(f"✗ Radio input #{selected_id} never appeared")
+                return False, selected_name
+        
+            driver.execute_script(
+                f"document.querySelector('#{selected_id}').click();"
+                )
+            # Also trigger change event in case the page listens for it
+            driver.execute_script(
+                f"document.querySelector('#{selected_id}').dispatchEvent(new Event('change', {{bubbles: true}}));"
+                )
+            time.sleep(1)
+            if not _wait_for_payment_options(order):
+                print("✗ Payment options not fully ready, but continuing...")
+            
+            # Confirm the click actually stuck (page may re-render after express loads)
+            stable = wait_until_selection_stable("ID_SHIPPING_METHOD_ID_", selected_id)
+            if not stable:
+                print(f"✗ Could not get {selected_name} to stick")
+            
+            # Ground truth: read what's actually checked, don't just trust the intended click
+            actual_id = get_checked_option_id("ID_SHIPPING_METHOD_ID_")
+            actual_option = next(
+                (opt for opt in order.delivery_options if opt['opt_id'] == actual_id),
+                selected
+            )
+            actual_name = actual_option['local_name']
+            order.selected_delivery = actual_option
+            
+            if actual_id == selected_id:
+                print(f"Confirmed delivery selection: {actual_name}")
+            else:
+                print(f"✗ Intended {selected_name} but DOM shows {actual_name} - reporting actual state")
+             
+            return True, actual_name
+
+    except Exception as e:
+        print(f"✗ Failed to click delivery option {selected_name}: {str(e)}")
+        return False, selected_name
+
+    try:
         # Step 2: Handle sub-actions based on delivery type
         if 'shop pickup' in selected_en or 'pickup (SDEK)' in selected_en:
             success = _select_pickup_location(order)
