@@ -4,6 +4,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import ElementClickInterceptedException, StaleElementReferenceException
 import time
 import re
 import random
@@ -161,9 +162,9 @@ class OrderContextES(ParentContext):
             'price_classes': {
                 0: [83836, 83820, 84547, 84545, 83089], # Under 70 EU
 
-                1: [84558, 84638, 84087, 83842, 85574], # 70-120 EU
+                1: [84558, 84638, 84654, 83842, 85312], # 70-120 EU
 
-                2: [84088, 84658, 84553, 83838, 84654] # 120+ EU
+                2: [84088, 84658, 84551, 83839, 84651] # 120+ EU
 
             }
         }
@@ -627,6 +628,74 @@ def proceed_to_checkout():
         take_screenshot("checkout_error")
         return False
 
+def get_checked_option_id(id_prefix):
+    # Ground-truth read of which radio input is actually checked in the DOM right now
+    # Returns the id string, or None if none are checked
+
+    script = """
+        var prefix = arguments[0];
+        var inputs = document.querySelectorAll('input[id^="' + prefix + '"]');
+        for (var i = 0; i < inputs.length; i++) {
+            if (inputs[i].checked) { return inputs[i].id; }
+        }
+        return null;
+    """
+    try:
+        return driver.execute_script(script, id_prefix)
+    except Exception:
+        return None
+
+def force_click_option(opt_id):
+    # Clicking the label fires the site's own click handlers, force the underlying input's checked state + change event
+    # Needed in case the label click alone gets swallowed by an in-progress re-render
+
+    try:
+        driver.execute_script(f"""
+            var label = document.querySelector('label[for="{opt_id}"]');
+            if (label) {{ label.click(); }}
+        """)
+    except Exception:
+        pass
+    try:
+        driver.execute_script(f"""
+            var input = document.getElementById('{opt_id}');
+            if (input && !input.checked) {{
+                input.checked = true;
+                input.dispatchEvent(new Event('change', {{bubbles: true}}));
+                input.dispatchEvent(new Event('click', {{bubbles: true}}));
+            }}
+        """)
+    except Exception:
+        pass
+
+def wait_until_selection_stable(id_prefix, expected_id, stable_duration=1.0, timeout=12, poll_interval=0.15):
+    # Poll the DOM until `expected_id` has been continuously checked for `stable_duration` seconds straight
+    # Any time the checked option drifts away from expected_id, it re-clicks expected_id and restarts the stability clock.
+    # Only moves on once things have genuinely settled, returns True if stable in time, False if it never settled (timeout).
+    
+    start = time.time()
+    stable_since = None
+
+    while time.time() - start < timeout:
+        current = get_checked_option_id(id_prefix)
+
+        if current == expected_id:
+            if stable_since is None:
+                stable_since = time.time()
+            elif time.time() - stable_since >= stable_duration:
+                return True
+        else:
+            if stable_since is not None:
+                print(f"  ↳ Selection drifted from {expected_id} (now: {current}), re-clicking...")
+            stable_since = None
+            force_click_option(expected_id)
+
+        time.sleep(poll_interval)
+
+    final = get_checked_option_id(id_prefix)
+    print(f"✗ '{expected_id}' never stabilized as checked (last seen: {final})")
+    return False
+
 def select_delivery_option(order):
     try:
         delivery_options = order.delivery_options
@@ -634,7 +703,6 @@ def select_delivery_option(order):
 
         # Update order context
         order.selected_delivery = selected
-
         selected_name = selected['local_name']
         selected_id = selected['opt_id']
         print(f"Selected: {selected_name}")
@@ -652,9 +720,17 @@ def select_delivery_option(order):
         take_screenshot("delivery_option_error")
         return False, "Error"
 
+
+
 def select_payment_option(order):
     try:
         print("Selecting payment option...")
+        # Wait for payment options to stabilize after delivery change
+        WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.ID, "bx-payment-method"))
+        )
+        time.sleep(0.5)  # Small buffer for JS to finish rendering
+        
         available_options = order.get_available_payment_options()
         
         if not available_options:
@@ -703,26 +779,39 @@ def select_payment_option(order):
                 time.sleep(0.5)
                 payment_label.click()
                 time.sleep(1)
-                
-                print(f"✓ Successfully selected {selected_name}")
-                return True, selected_name
-                
+
+            except (ElementClickInterceptedException, StaleElementReferenceException) as e:
+                print(f"Click intercepted/stale ({type(e).__name__}), falling back to JS click...")
+                force_click_option(selected_id)
             except Exception as e:
-                # Fallback: try JavaScript click if normal click fails
-                try:
-                    print("Attempting JavaScript click fallback...")
-                    driver.execute_script(
-                        f"document.querySelector('label[for=\"{selected_id}\"]').click();"
-                    )
-                    time.sleep(1)
-                    print(f"✓ Successfully selected {selected_name} via JavaScript")
-                    return True, selected_name
-                except:
-                    print(f"✗ Failed to select payment option {selected_name}: {str(e)}")
-                    return False, selected_name
+                print(f"Normal click failed ({str(e)}), attempting JS click fallback...")
+                force_click_option(selected_id)
+
+            # Confirm the click actually stuck
+            stable = wait_until_selection_stable("ID_PAY_SYSTEM_ID_", selected_id)
+            if not stable:
+                print(f"✗ Could not get {selected_name} to stick")
+                        
+            # Ground truth: read what's actually checked in the DOM right now,
+            # instead of trusting what we intended to click
+            actual_id = get_checked_option_id("ID_PAY_SYSTEM_ID_")
+            actual_option = next(
+                (opt for opt in order.payment_options if opt['opt_id'] == actual_id),
+                selected
+            )
+            actual_name = actual_option['local_name']
+            order.selected_payment = actual_option
+             
+            if actual_id == selected_id:
+                print(f"✓ Confirmed payment selection: {actual_name}")
+            else:
+                print(f"✗ Intended {selected_name} but DOM shows {actual_name} - reporting actual state")
+             
+            return True, actual_name
+                    
         else:
             print(f"Using {selected_name} (virtual or default), no action needed")
-            return True, selected_name
+            return True, selected_name 
             
     except Exception as e:
         print(f"✗ Error in payment selection process: {str(e)}")
@@ -802,13 +891,15 @@ def fill_order_form(user_email, test_phone):
 
         # Country field
         try:
+            close_cookie_popup()
             country_field = WebDriverWait(driver, 5).until(EC.element_to_be_clickable((By.ID, "bx-input-order-COUNTRY_SHIPPING-ts-control")))
             country_field.click()
+            time.sleep(0.5)
             country_field.clear()
-            country_field.send_keys(ship_to['country'])
-            # Wait a moment for the dropdown to appear and select the first option
+            country_field.send_keys(country_name)
             time.sleep(1)
             country_field.send_keys(Keys.ENTER)
+            time.sleep(1)
             print("Country selected")
 
             # Add a small delay after country selection to allow any JS to process
@@ -870,7 +961,23 @@ def fill_order_form(user_email, test_phone):
         
         # Address field
         try:
-            address_field = WebDriverWait(driver, 5).until(
+            # Wait for the cart sidebar loader to disappear (may reappear due to async delivery pricing)
+            try:
+                WebDriverWait(driver, 15).until(
+                    EC.invisibility_of_element_located((By.CSS_SELECTOR, "#CART-SIDEBAR-TARGET.loader"))
+                )
+                print("Loader disappeared")
+                time.sleep(0.5)
+            except:
+                print("Loader not found or already gone")
+        
+            # Wait for delivery section to stabilize (express option may be loading)
+            WebDriverWait(driver, 10).until(
+                EC.presence_of_element_located((By.ID, "bx-delivery-method"))
+            )
+            time.sleep(0.5)
+        
+            address_field = WebDriverWait(driver, 10).until(
                 EC.element_to_be_clickable((By.ID, "bx-input-order-ADDRESS_SHIP"))
             )
             
@@ -904,12 +1011,23 @@ def fill_order_form(user_email, test_phone):
             postal_code_field.clear()
             postal_code_field.send_keys(ship_to['postal_code'])
             print("Postal code field filled")
+
+            # Wait for delivery/payment section to fully re-render after address is complete
+            print("Waiting for delivery options to stabilize...")
+            WebDriverWait(driver, 15).until(
+                EC.presence_of_element_located((By.ID, "bx-delivery-method"))
+            )
+            # Wait for at least one payment label to be visible (section fully rebuilt)
+            WebDriverWait(driver, 10).until(
+                EC.visibility_of_element_located((By.CSS_SELECTOR, "#bx-payment-method label"))
+            )
+            time.sleep(0.5)
+            print("Delivery/payment section stabilized")
             
         except Exception as e:
             print(f"✗ Error with postal code field: {str(e)}")
             take_screenshot("postal_code_field_error")
             return False
-        
         
         take_screenshot("order_form_filled")
         print("✓ Order form filled successfully")

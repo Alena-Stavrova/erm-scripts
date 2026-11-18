@@ -24,6 +24,7 @@ script_modules = {
     }
 
 full_script_list = ['BG', 'CZ', 'DE', 'ES', 'EU', 'HU', 'IT', 'PL', 'RU']
+tier_3_script_list = ['BG', 'DE', 'ES', 'EU']
 
 # ['BG', 'CZ', 'DE', 'ES', 'EU', 'HU', 'IT', 'PL']
 # ['HU', 'BG']
@@ -36,8 +37,12 @@ def list_substraction(list_1, list_2):
 print("Type countries space-separated, like 'ES EU PL'")
 print("Or type '9' to run ALL scripts") # For 9 ERM scripts, incl. RU
 print("Or type '9-HU DE' to exclude 1+ script (HU DE) and run all the others")
+print("Or type 'T' to run all ERM Tier 3 scripts (BG, DE, ES, EU)")
 scripts_string = input("Enter your choice: ")
-if scripts_string == "9":
+
+if scripts_string == "T" or scripts_string == "t":
+    scripts_to_run = tier_3_script_list
+elif scripts_string == "9":
     scripts_to_run = full_script_list
 elif "9-" in scripts_string:
     # Remove 9 and minus sign

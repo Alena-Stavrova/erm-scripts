@@ -177,9 +177,9 @@ class OrderContextCZ(ParentContext):
         
         self.sku_lists = {
             'price_classes': {
-                0: [83836, 83820, 84547, 84545, 83089], # Under 3000 CZK
+                0: [83836, 83820, 84547, 84545, 86259], # Under 3000 CZK
 
-                1: [84652, 84088, 84648, 84553, 83837] # 3000+ CZK
+                1: [84652, 84088, 84651, 84551, 83840] # 3000+ CZK
             }
         }
 
@@ -1305,7 +1305,6 @@ def fill_order_form(user_email, test_phone):
             print(f"✗ Error with postal code field: {str(e)}")
             take_screenshot("postal_code_field_error")
             return False
-        
         
         take_screenshot("order_form_filled")
         print("✓ Order form filled successfully")
